@@ -48,7 +48,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="w-full py-20 md:py-32 bg-secondary/50"
+      className="w-full py-20 md:py-32 bg-secondary/15 backdrop-blur-[2px]"
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="space-y-12">
