@@ -12,6 +12,7 @@ import { StallMembersDialog } from "./components/stall-members-dialog";
 import type { PlanPermissions } from "@/lib/permissions";
 import type { Stall } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { fetchTicketingAndStalls } from "@/lib/fetch-ticketing-stalls";
 
 interface Props {
   planId: string;
@@ -25,11 +26,10 @@ interface Props {
 }
 
 export function StallsSection({ planId, permissions, embedded = false, maxHeight = null }: Props) {
-  const { currency } = useFinancialStore();
+  const { currency, stalls } = useFinancialStore();
   const { show } = useSnackbar();
 
-  const [stalls, setStalls] = useState<Stall[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = false;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStall, setEditingStall] = useState<Stall | null>(null);
   const [membersFor, setMembersFor] = useState<Stall | null>(null);
@@ -38,15 +38,11 @@ export function StallsSection({ planId, permissions, embedded = false, maxHeight
 
   const fetchStalls = async () => {
     if (!planId) return;
-    setLoading(true);
     try {
-      const res = await authClient.request(`/api/plan/${planId}/stalls`);
-      setStalls(res.data.data ?? []);
+      await fetchTicketingAndStalls(planId, { hasStalls: true });
     } catch (err) {
       console.error("Fetch stalls failed:", err);
       show("Failed to fetch stalls", "error");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -66,7 +62,7 @@ export function StallsSection({ planId, permissions, embedded = false, maxHeight
   const deleteStall = async (id: string) => {
     try {
       await authClient.request(`/api/plan/${planId}/stalls/${id}`, { method: "DELETE" });
-      setStalls((prev) => prev.filter((s) => s.id !== id));
+      await fetchStalls();
       show("Stall deleted", "success");
     } catch (err) {
       console.error("Delete stall failed:", err);

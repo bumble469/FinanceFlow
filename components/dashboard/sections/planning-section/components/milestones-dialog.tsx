@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Department, Task, Milestone, MilestoneFormData, MilestoneStatus } from "@/lib/types";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 interface Props {
   open: boolean;
@@ -69,6 +71,12 @@ export function MilestoneDialog({
   const [form, setForm] = useState<MilestoneFormData>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof MilestoneFormData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { locked, lockedByName, otherEditors } = useEditLock(
+    "milestone",
+    editing?.id ?? null,
+    open && !!editing
+  );
+  const originalRef = useRef<MilestoneFormData>(EMPTY);
 
   const claimedElsewhere = new Map<string, string>();
   for (const m of allMilestones) {
@@ -86,15 +94,18 @@ export function MilestoneDialog({
 
   useEffect(() => {
     if (editing) {
-      setForm({
+      const initial: MilestoneFormData = {
         title: editing.title,
         description: editing.description ?? "",
         dueDate: editing.dueDate ? editing.dueDate.split("T")[0] : "",
         status: editing.status,
         taskIds: editing.tasks.map((t) => t.id),
-      });
+      };
+      setForm(initial);
+      originalRef.current = initial;
     } else {
       setForm(EMPTY);
+      originalRef.current = EMPTY;
     }
     setErrors({});
   }, [editing, open]);
@@ -128,24 +139,34 @@ export function MilestoneDialog({
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validate() || locked) return;
     setIsSubmitting(true);
-
-    const payload: MilestoneFormData = {
-      title: form.title.trim(),
-      description: form.description?.trim() || undefined,
-      dueDate: form.dueDate || undefined,
-      status: form.status,
-      departmentId: form.departmentId || undefined,
-      phaseId: form.phaseId || undefined,
-      taskIds: form.taskIds,
-    };
 
     try {
       if (editing) {
-        await onUpdate(editing.id, payload);
+        const orig = originalRef.current;
+        const diff: Partial<MilestoneFormData> = {};
+        if (form.title.trim() !== orig.title) diff.title = form.title.trim();
+        if ((form.description?.trim() || undefined) !== (orig.description || undefined)) {
+          diff.description = form.description?.trim() || undefined;
+        }
+        if ((form.dueDate || undefined) !== (orig.dueDate || undefined)) diff.dueDate = form.dueDate || undefined;
+        if (form.status !== orig.status) diff.status = form.status;
+        if (form.departmentId !== orig.departmentId) diff.departmentId = form.departmentId || undefined;
+        if (form.phaseId !== orig.phaseId) diff.phaseId = form.phaseId || undefined;
+        if (JSON.stringify(form.taskIds) !== JSON.stringify(orig.taskIds)) diff.taskIds = form.taskIds;
+
+        await onUpdate(editing.id, diff as MilestoneFormData);
       } else {
-        await onCreate(payload);
+        await onCreate({
+          title: form.title.trim(),
+          description: form.description?.trim() || undefined,
+          dueDate: form.dueDate || undefined,
+          status: form.status,
+          departmentId: form.departmentId || undefined,
+          phaseId: form.phaseId || undefined,
+          taskIds: form.taskIds,
+        });
       }
       onClose();
     } catch (err) {
@@ -154,6 +175,7 @@ export function MilestoneDialog({
       setIsSubmitting(false);
     }
   }
+
 
   function set<K extends keyof MilestoneFormData>(key: K, val: MilestoneFormData[K]) {
     setForm((f) => ({ ...f, [key]: val }));
@@ -192,8 +214,17 @@ export function MilestoneDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit milestone" : "Add milestone"}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{editing ? "Edit milestone" : "Add milestone"}</DialogTitle>
+            <EditingPresenceIndicator editors={otherEditors} />
+          </div>
         </DialogHeader>
+
+        {locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}. You can view this milestone but can't save changes until they're done.
+          </div>
+        )}
 
         <div className="space-y-4 pt-2">
           {/* Title */}
@@ -331,7 +362,7 @@ export function MilestoneDialog({
             <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="cursor-pointer hover:text-gray-400">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="cursor-pointer hover:text-gray-100">
+            <Button onClick={handleSubmit} disabled={isSubmitting || locked} className="cursor-pointer hover:text-gray-100">
               {isSubmitting
                 ? editing ? "Updating..." : "Adding..."
                 : editing ? "Update milestone" : "Add milestone"}

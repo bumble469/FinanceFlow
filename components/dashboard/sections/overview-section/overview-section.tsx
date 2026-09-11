@@ -397,7 +397,7 @@ function usePendingApprovalCounts(currentPlanId: string | null, expenses: Expens
 // ─── Project Overview ───────────────────────────────────────────────────────
 
 function ProjectOverview() {
-    const {
+  const {
     expenses, income, simulation, eventData, departments, currency,
     tasks, milestones, teamMembers, currentPlanId, currentPlanMeta,
   } = useFinancialStore();
@@ -715,12 +715,10 @@ function EventOverview() {
   const {
     expenses, income, simulation, eventData, departments, currency,
     tasks, milestones, currentPlanId, currentPlanMeta,
+    ticketTypes, ticketBookings: bookings, stalls,
   } = useFinancialStore();
 
-  const [ticketTypes, setTicketTypes] = useState<any[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [stalls, setStalls] = useState<any[]>([]);
-  const [loadingExtras, setLoadingExtras] = useState(true);
+  const loadingExtras = false;
   const [resourceCosts, setResourceCosts] = useState<{ departments: any[] }>({ departments: [] });
 
   useEffect(() => {
@@ -729,26 +727,6 @@ function EventOverview() {
       .then((res) => setResourceCosts(res.data.data))
       .catch((err) => console.error("Failed to fetch resource costs:", err));
   }, [currentPlanId]);
-
-  useEffect(() => {
-    if (!currentPlanId) return;
-    setLoadingExtras(true);
-    const calls: Promise<any>[] = [];
-
-    if (currentPlanMeta?.hasTicketing) {
-      calls.push(
-        authClient.request(`/api/plan/${currentPlanId}/ticket-types`).then((r) => setTicketTypes(r.data.data ?? [])),
-        authClient.request(`/api/plan/${currentPlanId}/ticket-bookings`).then((r) => setBookings(r.data.data ?? []))
-      );
-    }
-    if (currentPlanMeta?.hasStalls) {
-      calls.push(
-        authClient.request(`/api/plan/${currentPlanId}/stalls`).then((r) => setStalls(r.data.data ?? []))
-      );
-    }
-
-    Promise.allSettled(calls).finally(() => setLoadingExtras(false));
-  }, [currentPlanId, currentPlanMeta?.hasTicketing, currentPlanMeta?.hasStalls]);
 
   const { pendingExpenseApprovals, pendingExtensions } = usePendingApprovalCounts(currentPlanId, expenses);
 

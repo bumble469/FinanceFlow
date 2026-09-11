@@ -175,7 +175,7 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ success: false, error: 'Plan not found' }, { status: 404 });
 
     const body = await request.json();
-    const { name, status, budget, description, currency, startDate, endDate, methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware } = body;
+    const { name, status, budget, description, currency, startDate, endDate, methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, allowMultipleEditing } = body;
 
     if (status && !Object.values(WorkItemStatus).includes(status)) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
@@ -191,6 +191,7 @@ export async function PATCH(
           ...(description !== undefined ? { description: description?.trim() || null } : {}),
           ...(currency ? { currency } : {}),
           ...(hasHardware !== undefined ? { hasHardware: !!hasHardware } : {}),
+          ...(allowMultipleEditing !== undefined ? { allowMultipleEditing: !!allowMultipleEditing } : {}),
         },
       });
 

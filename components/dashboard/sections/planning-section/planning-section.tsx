@@ -655,6 +655,7 @@ export function PlanningSection({ permissions }: { permissions: PlanPermissions 
                   canEditModule={permissions.canEditPhase(activeDept.id)}
                   canDeleteModule={permissions.canDeletePhase}
                   canAddTask={permissions.canAddTask(activeDept.id)}
+                  canEditTask={permissions.canEditTask(activeDept.id)}
                   canDeleteTask={permissions.canDeleteTask}
                   canApproveTaskSubmissions={permissions.canApproveTaskSubmission(activeDept.id)}
                 />

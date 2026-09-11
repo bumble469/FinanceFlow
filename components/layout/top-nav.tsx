@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import Image from "next/image"; // ✅ add this
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function TopNav() {
           {/* ✅ Updated Logo */}
           <Link href="/" className="flex items-center gap-3">
             <Image
-              src="/web_logo.png"   // from public folder
+              src="/web_logo.png"   
               alt="FinanceFlow Logo"
               width={32}
               height={32}

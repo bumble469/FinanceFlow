@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
+import { getPlanAccess } from "@/lib/get-plan-access";
+import { canAssignRole } from "@/lib/permissions";
 
 export async function POST(
   req: NextRequest,
@@ -19,6 +21,13 @@ export async function POST(
     }
 
     const { id: planId } = await params;
+
+    const access = await getPlanAccess(planId, authUser.sub);
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!access.permissions.canInviteMember) {
+      return NextResponse.json({ error: "You don't have permission to invite members to this plan" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const {
@@ -30,6 +39,13 @@ export async function POST(
       return NextResponse.json(
         { error: "invitedUserId is required" },
         { status: 400 }
+      );
+    }
+
+    if (!canAssignRole(access.role, role || "MEMBER")) {
+      return NextResponse.json(
+        { error: "Only the plan owner or an admin can invite someone as Admin or Co-Admin" },
+        { status: 403 }
       );
     }
 

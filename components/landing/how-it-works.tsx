@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle, BarChart3, Settings } from 'lucide-react'
+import { LayoutTemplate, UsersRound, LineChart } from 'lucide-react'
 
 import { Reveal } from '@/components/animate/reveal'
 import { Stagger, StaggerItem } from '@/components/animate/stagger'
@@ -8,46 +8,45 @@ import { Stagger, StaggerItem } from '@/components/animate/stagger'
 export function HowItWorksSection() {
   const steps = [
     {
-      icon: CheckCircle,
+      icon: LayoutTemplate,
       number: '01',
-      title: 'Create Your Plans',
+      title: 'Create a Plan',
       description:
-        'Set up multiple financial plans for projects, events, or business operations. Each plan has its own dashboard and metrics.',
+        'Start a Project or an Event plan. Each gets its own dashboard, budget, and structure — departments and phases for projects, ticketing and stalls for events.',
     },
     {
-      icon: Settings,
+      icon: UsersRound,
       number: '02',
-      title: 'Add Team & Expenses',
+      title: 'Bring in Your Team',
       description:
-        'Organize team members by roles, assign costs, and categorize expenses. Track everything in real-time.',
+        'Invite members, assign roles, and set granular permissions. Split costs across departments, track hardware, and manage who can approve what.',
     },
     {
-      icon: BarChart3,
-      number: '03',
+      icon: LineChart,
       title: 'Monitor & Analyze',
       description:
-        'View beautiful dashboards with real-time metrics, status indicators, and financial insights at a glance.',
+        'Watch tasks move, milestones extend or complete, and money flow through analytics, timeline charts, and live presence indicators.',
+      number: '03',
     },
   ]
 
   return (
-    <section id="about" className="w-full py-20 md:py-32 bg-background">
+    <section id="about" className="relative w-full py-20 md:py-32 bg-transparent">
+      <div className="absolute -bottom-32 right-0 h-96 w-96 rounded-full bg-chart-2/10 blur-[120px] -z-10" />
+
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="space-y-12">
-
-          {/* Section Header */}
           <Reveal>
             <div className="space-y-4 text-center">
               <h2 className="text-3xl md:text-5xl font-bold text-foreground text-balance">
-                How FinanceFlow Works
+                How FinanceFlow works
               </h2>
               <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-                Simple, intuitive, and powerful. Get started in minutes.
+                Three steps from a blank plan to a fully tracked project or event.
               </p>
             </div>
           </Reveal>
 
-          {/* Steps */}
           <Reveal delay={0.15}>
             <Stagger>
               <div className="grid md:grid-cols-3 gap-10">
@@ -55,34 +54,20 @@ export function HowItWorksSection() {
                   const Icon = step.icon
                   return (
                     <StaggerItem key={index}>
-                      <div className="relative space-y-5">
-
-                        {/* Thick Accent Bar */}
-                        <div className="h-2 w-16 rounded-full bg-primary/40" />
-
-                        {/* Number + Icon */}
+                      <div className="relative space-y-5 rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm p-6">
+                        <div className="h-1.5 w-14 rounded-full bg-gradient-to-r from-primary to-chart-2" />
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-                            <span className="text-primary font-bold">
-                              {step.number}
-                            </span>
+                          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-primary/10">
+                            <span className="text-primary font-bold text-sm">{step.number}</span>
                           </div>
-
-                          <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-secondary/60 flex items-center justify-center">
                             <Icon className="h-5 w-5 text-primary" />
                           </div>
                         </div>
-
-                        {/* Content */}
                         <div className="space-y-2">
-                          <h3 className="text-lg font-semibold text-foreground">
-                            {step.title}
-                          </h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            {step.description}
-                          </p>
+                          <h3 className="text-lg font-semibold text-foreground">{step.title}</h3>
+                          <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
                         </div>
-
                       </div>
                     </StaggerItem>
                   )
@@ -90,7 +75,6 @@ export function HowItWorksSection() {
               </div>
             </Stagger>
           </Reveal>
-
         </div>
       </div>
     </section>

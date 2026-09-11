@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { authClient } from "@/lib/auth-client";
+import { fetchTicketingAndStalls } from "@/lib/fetch-ticketing-stalls";
 
 export default function PlanDashboardPage() {
   const params = useParams();
@@ -27,7 +28,7 @@ export default function PlanDashboardPage() {
           method: "GET",
         });
 
-        if (cancelled) return; // a newer navigation already took over
+        if (cancelled) return;
 
         const data = res.data.data;
 
@@ -47,6 +48,7 @@ export default function PlanDashboardPage() {
           upiQrUrl: data.event?.upiQrUrl ?? null,
           eventDate: data.event?.eventDate ?? null,
           venue: data.event?.venue ?? null,
+          allowMultipleEditing: data.allowMultipleEditing ?? true,
         });
 
         setPlanMeta({
@@ -61,6 +63,10 @@ export default function PlanDashboardPage() {
 
         setIncome((data.income || []).map((i: any) => ({ ...i, amount: Number(i.amount) })));
         setExpenses((data.expenses || []).map((e: any) => ({ ...e, amount: Number(e.amount) })));
+        await fetchTicketingAndStalls(planId, {
+          hasTicketing: !!data.event?.hasTicketing,
+          hasStalls: !!data.event?.hasStalls,
+        });
       } catch (err: any) {
         if (cancelled) return;
         console.error("Failed to fetch plan:", err);

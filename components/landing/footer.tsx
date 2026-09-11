@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Github, Twitter, Linkedin, Mail } from 'lucide-react'
+import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear()
@@ -41,15 +41,12 @@ export function LandingFooter() {
   ]
 
   return (
-    <footer className="border-t border-border bg-background">
+    <footer className="border-t border-border/30 bg-background/40 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {/* Brand Section */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 font-semibold text-foreground mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">$</span>
-              </div>
               <span>FinanceFlow</span>
             </div>
             <p className="text-sm text-muted-foreground mb-4">

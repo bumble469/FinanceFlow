@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { notify, getAllPlanUserIds } from "@/lib/notify";
+import { getPlanAccess } from "@/lib/get-plan-access";
 
 export async function PATCH(
   req: NextRequest,
@@ -15,11 +16,12 @@ export async function PATCH(
 
     const { id: workItemId, deptId, taskId } = await params;
 
-    const membership = await prisma.workItemMember.findUnique({
-      where: { workItemId_userId: { workItemId, userId: user.sub } },
-    });
-    if (!membership) {
+    const access = await getPlanAccess(workItemId, user.sub);
+    if (!access) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!access.permissions.canEditTask(deptId)) {
+      return NextResponse.json({ error: "You don't have permission to edit tasks in this department" }, { status: 403 });
     }
 
     // Verify task exists and belongs to this work item + department
@@ -40,6 +42,7 @@ export async function PATCH(
       dueDate,
       phaseId,
       extension,
+      requirement,
     } = body;
 
     if (extension) {
@@ -98,6 +101,32 @@ export async function PATCH(
           extensionReason: extension.reason.trim(),
         }),
         ...(status === "DONE" && { completedAt: new Date() }),
+        ...(requirement && {
+          requirement: {
+            upsert: {
+              create: {
+                requireApproval: requirement.requireApproval ?? true,
+                requireDescription: requirement.requireDescription ?? false,
+                requireImages: requirement.requireImages ?? false,
+                minImages: requirement.minImages ?? null,
+                maxImages: requirement.maxImages ?? null,
+                requireVideo: requirement.requireVideo ?? false,
+                requireDocument: requirement.requireDocument ?? false,
+                allowMultipleEvidenceTypes: requirement.allowMultipleEvidenceTypes ?? true,
+              },
+              update: {
+                requireApproval: requirement.requireApproval ?? true,
+                requireDescription: requirement.requireDescription ?? false,
+                requireImages: requirement.requireImages ?? false,
+                minImages: requirement.minImages ?? null,
+                maxImages: requirement.maxImages ?? null,
+                requireVideo: requirement.requireVideo ?? false,
+                requireDocument: requirement.requireDocument ?? false,
+                allowMultipleEvidenceTypes: requirement.allowMultipleEvidenceTypes ?? true,
+              },
+            },
+          },
+        }),
       },
       select: {
         id: true,
@@ -114,6 +143,18 @@ export async function PATCH(
         completedAt: true,
         createdAt: true,
         updatedAt: true,
+        requirement: {
+          select: {
+            requireApproval: true,
+            requireDescription: true,
+            requireImages: true,
+            minImages: true,
+            maxImages: true,
+            requireVideo: true,
+            requireDocument: true,
+            allowMultipleEvidenceTypes: true,
+          },
+        },
         members: {
           select: {
             workItemMember: {
@@ -154,11 +195,12 @@ export async function DELETE(
 
     const { id: workItemId, deptId, taskId } = await params;
 
-    const membership = await prisma.workItemMember.findUnique({
-      where: { workItemId_userId: { workItemId, userId: user.sub } },
-    });
-    if (!membership) {
+    const access = await getPlanAccess(workItemId, user.sub);
+    if (!access) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!access.permissions.canDeleteTask) {
+      return NextResponse.json({ error: "Only admins can delete tasks" }, { status: 403 });
     }
 
     // Verify task exists and belongs to this work item + department

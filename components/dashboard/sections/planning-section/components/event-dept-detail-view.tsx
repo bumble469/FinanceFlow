@@ -111,15 +111,17 @@ export function EventDepartmentDetailView({
         </div>
       </div>
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full gap-2 border-dashed hover:bg-muted/40 hover:text-foreground hover:border-muted transition-colors cursor-pointer"
-        onClick={() => setTaskDialog({ open: true })}
-      >
-        <Plus className="h-4 w-4" />
-        Add Task
-      </Button>
+      {perms.canAddTask(dept.id) && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full gap-2 border-dashed hover:bg-muted/40 hover:text-foreground hover:border-muted transition-colors cursor-pointer"
+          onClick={() => setTaskDialog({ open: true })}
+        >
+          <Plus className="h-4 w-4" />
+          Add Task
+        </Button>
+      )}
 
       {loading ? (
         <div className="py-10 text-center text-sm text-muted-foreground">Loading tasks...</div>
@@ -133,6 +135,8 @@ export function EventDepartmentDetailView({
           onDelete={(id) => { setDeleteTaskId(id); setConfirmOpen(true); }}
           canApproveSubmissions={perms.canApproveTaskSubmission(dept.id)}
           onSubmissionReviewed={fetchTasks}
+          canEdit={perms.canEditTask(dept.id)}
+          canDelete={perms.canDeleteTask}
         />
       )}
 

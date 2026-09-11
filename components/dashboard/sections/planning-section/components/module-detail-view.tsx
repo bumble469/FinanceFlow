@@ -13,12 +13,14 @@ export function ModuleDetailView({
   module,
   onBack,
   canAddTask,
+  canEditTask,
   canDeleteTask,
   canApproveTaskSubmissions,
 }: {
   module: Module;
   onBack: () => void;
   canAddTask?: boolean;
+  canEditTask?: boolean;
   canDeleteTask?: boolean;
   canApproveTaskSubmissions?: boolean;
 }) {
@@ -168,7 +170,7 @@ export function ModuleDetailView({
             setDeleteTaskId(id);
             setConfirmOpen(true);
           }}
-          canEdit={canAddTask}
+          canEdit={canEditTask}
           canDelete={canDeleteTask}
           canApproveSubmissions={canApproveTaskSubmissions}
           onSubmissionReviewed={fetchTasks}

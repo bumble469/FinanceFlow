@@ -3,18 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  Account,
-  Plan,
-  TeamMember,
-  Expense,
-  Mode,
-  EventData,
-  SimulationModifiers,
-  Department,
-  Module,
-  Task,
-  Income,
-  Milestone
+  Account, Plan, TeamMember, Expense, Mode, EventData, SimulationModifiers,
+  Department, Module, Task, Income, Milestone, TicketType, TicketBooking, Stall,
 } from "./types";
 import type { CoAdminPermissions, ManagerPermissions, CoManagerPermissions } from "./permissions";
 
@@ -35,6 +25,7 @@ export interface CurrentPlanMeta {
   eventDate?: string | null;
   venue?: string | null;
   hasHardware?: boolean;
+  allowMultipleEditing?: boolean;
 }
 
 interface AccountStore {
@@ -117,6 +108,15 @@ interface PlanDashboardStore {
   addTask: (task: Task) => void;
   updateTask: (id: string, task: Partial<Task>) => void;
   removeTask: (id: string) => void;
+
+  ticketTypes: TicketType[];
+  setTicketTypes: (t: TicketType[]) => void;
+
+  ticketBookings: TicketBooking[];
+  setTicketBookings: (b: TicketBooking[]) => void;
+
+  stalls: Stall[];
+  setStalls: (s: Stall[]) => void;
 
   milestones: Milestone[];
   setMilestones: (milestones: Milestone[]) => void;
@@ -386,6 +386,15 @@ export const useFinancialStore = create<FinancialStore>()(
           tasks: state.tasks.filter((t) => t.id !== id),
         })),
 
+      ticketTypes: [],
+      setTicketTypes: (ticketTypes) => set({ ticketTypes }),
+
+      ticketBookings: [],
+      setTicketBookings: (ticketBookings) => set({ ticketBookings }),
+
+      stalls: [],
+      setStalls: (stalls) => set({ stalls }),
+
       milestones: [],
       setMilestones: (milestones) => set({ milestones }),
 
@@ -417,7 +426,7 @@ export const useFinancialStore = create<FinancialStore>()(
           departments: data.departments || [],
           modules: data.modules || [],
           tasks: data.tasks || [],
-          milestones: data.milestones || [], 
+          milestones: data.milestones || [],
           currency: data.currency || "INR",
           teamMembers: data.teamMembers || [],
           budget: Number(data.eventBudget) || 0,

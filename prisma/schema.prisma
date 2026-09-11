@@ -350,6 +350,7 @@ model WorkItem {
   event    Event?
   planInfo PlanInfo?
   hasHardware Boolean @default(false)
+  allowMultipleEditing Boolean @default(true)
 
   members WorkItemMember[]
   invitations WorkItemMemberInvitation[]
@@ -1113,7 +1114,7 @@ model HardwareItem {
 
   // approval workflow
   requestStatus  HardwareRequestStatus @default(PENDING)
-  requestedById  String
+  requestedById  String?
   declineReason  String?
   reviewedById   String?
   reviewedAt     DateTime?
@@ -1132,7 +1133,7 @@ model HardwareItem {
   workItem    WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
   department  Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   stall       Stall?          @relation(fields: [stallId], references: [id], onDelete: SetNull)
-  requestedBy WorkItemMember  @relation("HardwareRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  requestedBy WorkItemMember? @relation("HardwareRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
   reviewedBy  WorkItemMember? @relation("HardwareReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   expenses    Expense[]
   income   Income[]

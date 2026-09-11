@@ -99,6 +99,13 @@ const CATEGORY_CONFIG: Record<
     badgeClass: "bg-chart-5/10 text-chart-5",
     hex: "#8b5cf6",
   },
+  EQUIPMENT: {
+    label: "Equipment",
+    icon: PartyPopper,
+    colorClass: "bg-chart-5/15 text-chart-5",
+    badgeClass: "bg-chart-5/10 text-chart-5",
+    hex: "#8b5cf6",
+  },
   OTHER: {
     label: "Other",
     icon: Wallet,
