@@ -212,10 +212,10 @@ export default function SignupPage() {
 
   return (
     <div className="h-screen max-h-screen overflow-hidden grid lg:grid-cols-12 bg-background relative">
-      
+
       {/* LEFT COLUMN: Interactive Robot Stage (Desktop only, hidden on mobile) */}
       <div className="lg:col-span-5 xl:col-span-6 relative hidden lg:flex h-full flex-col items-center justify-center p-8 bg-gradient-to-br from-secondary/25 via-background to-secondary/10 border-r border-border/30 overflow-hidden">
-        
+
         {/* Soft decorative background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] rounded-full bg-primary/10 blur-[130px] pointer-events-none" />
 
@@ -239,7 +239,7 @@ export default function SignupPage() {
 
       {/* RIGHT COLUMN: Signup Form with responsive text & internal scrolling */}
       <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col justify-between p-[clamp(1rem,2vw+1vh,2.5rem)] z-10 overflow-hidden">
-        
+
         {/* Top bar with back button */}
         <div className="flex items-center justify-between shrink-0 mb-1.5">
           <Link
@@ -252,16 +252,27 @@ export default function SignupPage() {
         </div>
 
         {/* Center Section: Fixed Header + Internal Scrollable Form Area */}
-        <div className="mx-auto w-full max-w-sm sm:max-w-md flex flex-col flex-1 min-h-0 my-auto py-1">
-          
+        <div className="mx-auto w-full max-w-sm sm:max-w-md flex flex-col flex-1 min-h-0 my-auto py-4">
+
           {/* Header Text (Fluid typography) */}
-          <div className="shrink-0 mb-2 sm:mb-2.5">
-            <h1 className="text-[clamp(1.3rem,1.8vw+1vh,1.875rem)] font-bold text-foreground tracking-tight leading-tight">
-              Create an Account
-            </h1>
-            <p className="text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] text-muted-foreground mt-0.5">
-              Join FinanceFlow to manage your projects and finances.
-            </p>
+          <div className="flex items-start justify-between gap-3 shrink-0 mb-2 sm:mb-2.5">
+            <div>
+              <h1 className="text-[clamp(1.3rem,1.8vw+1vh,1.875rem)] font-bold text-foreground tracking-tight leading-tight">
+                Create an Account
+              </h1>
+
+              <p className="text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] text-muted-foreground mt-0.5">
+                Join FinanceFlow to manage your projects and finances.
+              </p>
+            </div>
+
+            <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none">
+              <RiveRobot
+                isHandsUp={isPasswordFocused}
+                triggerFail={triggerFail}
+                triggerSuccess={triggerSuccess}
+              />
+            </div>
           </div>
 
           {/* Internal Form Scroll Container */}

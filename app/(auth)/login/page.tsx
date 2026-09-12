@@ -158,16 +158,30 @@ export default function LoginPage() {
 
         {/* Center: Main Form Card with fluid scaling */}
         <div className="mx-auto w-full max-w-sm sm:max-w-md my-auto py-1">
-          {/* Header Text */}
-          <h1 className="text-[clamp(1.35rem,1.8vw+1vh,2rem)] font-bold text-foreground tracking-tight leading-tight">
-            Welcome Back!
-          </h1>
-          <p className="text-[clamp(0.75rem,0.8vw+0.4vh,0.875rem)] text-muted-foreground mt-1 mb-[clamp(0.75rem,2vh,1.5rem)]">
-            Please enter your login details.
-          </p>
+
+          {/* Header Text + Mobile Robot */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-[clamp(1.35rem,1.8vw+1vh,2rem)] font-bold text-foreground tracking-tight leading-tight">
+                Welcome Back!
+              </h1>
+
+              <p className="text-[clamp(0.75rem,0.8vw+0.4vh,0.875rem)] text-muted-foreground mt-1">
+                Please enter your login details.
+              </p>
+            </div>
+
+            <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none mb-4">
+              <RiveRobot
+                isHandsUp={isPasswordFocused}
+                triggerFail={triggerFail}
+                triggerSuccess={triggerSuccess}
+              />
+            </div>
+          </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-[clamp(0.65rem,1.5vh,1rem)]">
+          <form onSubmit={handleSubmit} className="space-y-[clamp(0.65rem,1.5vh,1rem)] mt-4">
             {errors.general && (
               <div className="p-2 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-[clamp(0.7rem,0.6vw+0.3vh,0.8125rem)] text-center font-medium">
                 {errors.general}
@@ -230,7 +244,7 @@ export default function LoginPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (

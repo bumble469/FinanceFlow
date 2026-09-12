@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { authClient } from "@/lib/auth-client";
 import { fetchTicketingAndStalls } from "@/lib/fetch-ticketing-stalls";
+import { Loader } from "@/components/shared/loader";
 
 export default function PlanDashboardPage() {
   const params = useParams();
@@ -88,7 +89,7 @@ export default function PlanDashboardPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading plan...</p>
+        <Loader label="Loading plan..." />
       </div>
     );
   }

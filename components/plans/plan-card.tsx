@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Trash2, Pencil } from "lucide-react";
+import { ArrowRight, Trash2, Pencil, Briefcase, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,7 +117,6 @@ export function PlanCard({
     0
   );
 
-  const profitLoss = plan.budget - spent;
   const spentPercent = (spent / plan.budget) * 100;
   const isWarning = spentPercent > 75;
   const isRisk = spentPercent > 90;
@@ -148,144 +147,90 @@ export function PlanCard({
     }
   };
 
-  if (isCollaboration) {
-    return (
-      <Card className="border border-border bg-card p-6 transition-all hover:shadow-lg">
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground line-clamp-2">
-              {plan.name}
-            </h3>
-            <Badge className={`text-xs shrink-0 ${getStatusColor()}`}>
-              {getStatusLabel()}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {plan.type === "project" ? "Project" : "Event"}
-            </Badge>
-            <Badge variant="secondary" className="text-xs">
-              {plan.role}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="mb-6 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Budget</span>
-            <span className="font-semibold text-foreground">
-              ${plan.budget.toLocaleString()}
-            </span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Spent</span>
-            <span className="font-semibold text-foreground">
-              ${spent.toLocaleString()} ({spentPercent.toFixed(1)}%)
-            </span>
-          </div>
-
-          <div className="w-full bg-muted rounded-full h-1.5">
-            <div
-              className={`h-1.5 rounded-full transition-all ${
-                isRisk
-                  ? "bg-danger"
-                  : isWarning
-                  ? "bg-warning"
-                  : "bg-success"
-              }`}
-              style={{ width: `${Math.min(spentPercent, 100)}%` }}
-            />
-          </div>
-        </div>
-
-        <Link href={`/plans/${plan.id}`}>
-          <Button className="w-full gap-2 cursor-pointer" size="sm">
-            View Dashboard
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
-      </Card>
-    );
-  }
+  const TypeIcon = plan.type === "project" ? Briefcase : CalendarDays;
 
   return (
-    <Card className="relative border border-border bg-card p-6 transition-all hover:shadow-lg">
-      <div className="mb-4 flex items-start justify-between">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute top-3 right-3"
-          onClick={() => onEdit(plan)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+    <Card className="group overflow-hidden border border-border bg-card p-0 transition-all duration-300 hover:shadow-lg hover:scale-102">
+      {/* Banner */}
+      <div
+        className="relative h-40 w-full overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, var(--secondary) 0%, var(--muted) 45%, var(--secondary) 100%)",
+        }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center">
+          <TypeIcon className="h-10 w-10 text-muted-foreground/30" />
+        </div>
 
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-foreground line-clamp-2">
+        {!isCollaboration && (
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute top-3 right-3 cursor-pointer h-8 w-8 bg-background/70 backdrop-blur-sm hover:bg-background"
+            onClick={() => onEdit(plan)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
+        <Badge variant="outline" className="absolute top-3 left-3 bg-background/70 backdrop-blur-sm text-xs">
+          {plan.type === "project" ? "Project" : "Event"}
+        </Badge>
+      </div>
+
+      <div className="border-t border-border/60 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-lg font-bold text-foreground line-clamp-1">
             {plan.name}
           </h3>
-
-          <div className="flex gap-2">
-            <Badge variant="outline" className="text-xs">
-              {plan.type === "project" ? "Project" : "Event"}
-            </Badge>
-
-            <Badge className={`text-xs ${getStatusColor()}`}>
-              {getStatusLabel()}
-            </Badge>
-          </div>
+          <Badge className={`shrink-0 text-xs ${getStatusColor()}`}>
+            {getStatusLabel()}
+            {isCollaboration && plan.role ? ` · ${plan.role}` : ""}
+          </Badge>
         </div>
+
+        <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+          {plan.currency || "$"}{spent.toLocaleString()} spent of {plan.currency || "$"}{plan.budget.toLocaleString()} budget ({spentPercent.toFixed(0)}% used)
+        </p>
       </div>
 
-      <div className="mb-6 space-y-3">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Budget</span>
-          <span className="font-semibold text-foreground">
-            ${plan.budget.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Spent</span>
-          <span className="font-semibold text-foreground">
-            ${spent.toLocaleString()} ({spentPercent.toFixed(1)}%)
-          </span>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
+      <div className="border-t border-border/60 p-3 flex items-center gap-2">
         <Link href={`/plans/${plan.id}`} className="flex-1">
-          <Button className="w-full gap-2 cursor-pointer" size="sm">
+          <Button
+            className="w-full gap-2 cursor-pointer rounded-full bg-secondary hover:bg-gray-300 hover:text-gray-800 text-foreground font-semibold"
+            size="sm"
+          >
             View Dashboard
             <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-destructive">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
+        {!isCollaboration && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-destructive shrink-0 cursor-pointer">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
 
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Plan?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Plan?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeletePlan} disabled={deleting}>
-                {deleting ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="cursor-pointer hover:text-gray-600">Cancel</AlertDialogCancel>
+                <AlertDialogAction className="cursor-pointer bg-red-500 hover:bg-red-700 hover:text-gray-100" onClick={handleDeletePlan} disabled={deleting}>
+                  {deleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </Card>
   );

@@ -1,104 +1,63 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { href: "/", label: "Overview", segment: "/" },
-  { href: "/plans", label: "Plans", segment: "/plans" },
-  { href: "/settings", label: "Settings", segment: "/settings" },
-  { href: "/connections", label: "Connections", segment: "/connections" },
-];
+import { useRouter, usePathname } from "next/navigation";
+import { Search, Settings, Bell } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useFinancialStore } from "@/lib/store";
 
 export function TopNav() {
+  const router = useRouter();
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currentUser = useFinancialStore((s) => s.currentUser);
 
   if (pathname.startsWith("/plans/") && !pathname.endsWith("/plans")) {
     return null;
   }
 
+  const initials =
+    currentUser?.name?.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() ||
+    currentUser?.email?.[0]?.toUpperCase() ||
+    "U";
+
   return (
-    <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="flex items-center justify-between py-3">
-          
-          {/* ✅ Updated Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/web_logo.png"   
-              alt="FinanceFlow Logo"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
-            <span className="font-semibold text-foreground hidden sm:inline">
-              FinanceFlow
-            </span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground",
-                    pathname === item.segment &&
-                      "bg-muted text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Button>
-              </Link>
-            ))}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="border-t border-border bg-card md:hidden py-3 space-y-2">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start text-muted-foreground hover:text-foreground",
-                    pathname === item.segment &&
-                      "bg-muted text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        )}
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background/95 px-6 backdrop-blur">
+      <div className="relative flex-1 max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search plans, tasks..."
+          className="w-full rounded-full border border-border bg-secondary/50 py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
       </div>
-    </nav>
+
+      <div className="ml-auto flex items-center gap-1">
+        <button
+          title="Notifications"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+        >
+          <Bell className="h-4.5 w-4.5" />
+        </button>
+
+        <button
+          title="Settings"
+          onClick={() => router.push("/settings")}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer"
+        >
+          <Settings className="h-4.5 w-4.5" />
+        </button>
+
+        <button
+          title={currentUser?.name || "Account"}
+          onClick={() => router.push("/settings")}
+          className="ml-1 cursor-pointer"
+        >
+          <Avatar className="h-9 w-9 border border-border">
+            <AvatarFallback className="bg-primary/20 text-primary text-sm font-medium">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </div>
+    </header>
   );
 }

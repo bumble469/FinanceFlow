@@ -163,40 +163,199 @@ function generateInsights(params: {
 // ─── shared widgets ─────────────────────────────────────────────────────────
 
 function HealthGauge({ score }: { score: number }) {
-  const color = score >= 75 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
+  // Half-arc SVG gauge (180° sweep)
+  const size = 200;
+  const cx = size / 2;
+  const cy = size / 2 + 20; // push arc center down so half arc fits
+  const R = 80;
+  const strokeW = 14;
+
+  // arc from 180° to 0° (left → right, bottom half of circle = upper arc visually)
+  const startAngle = Math.PI;   // left
+  const endAngle = 0;           // right
+  const sweep = Math.PI;        // 180°
+
+  const toXY = (angle: number) => ({
+    x: cx + R * Math.cos(angle),
+    y: cy - R * Math.sin(angle),
+  });
+
+  const arcPath = (from: number, to: number) => {
+    const s = toXY(from);
+    const e = toXY(to);
+    return `M ${s.x} ${s.y} A ${R} ${R} 0 0 1 ${e.x} ${e.y}`;
+  };
+
+  // progress arc: from 180° sweeping clockwise by score/100 * 180°
+  const progressEnd = Math.PI - (score / 100) * Math.PI;
+
+  const isHealthy = score >= 75;
+  const isWarning = score >= 50 && score < 75;
+  const label = isHealthy ? "Excellent" : isWarning ? "Moderate" : "At Risk";
+
+  // gradient id unique per instance
+  const gradId = "hg-grad";
+  const glowColor = isHealthy ? "rgba(52,211,153,0.15)" : isWarning ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)";
+  const arcColor = isHealthy ? "url(#hg-grad)" : isWarning ? "#fbbf24" : "#f87171";
+  const scoreColor = isHealthy ? "#34d399" : isWarning ? "#fbbf24" : "#f87171";
+
+  // tick marks at every 10 units
+  const ticks = Array.from({ length: 11 }, (_, i) => i * 10);
+
   return (
-    <div className="relative flex items-center justify-center">
-      <ResponsiveContainer width="100%" height={140}>
-        <RadialBarChart innerRadius="70%" outerRadius="100%" data={[{ value: score, fill: color }]} startAngle={90} endAngle={-270}>
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-          <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "#e5e7eb" }} />
-        </RadialBarChart>
-      </ResponsiveContainer>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-3xl font-bold text-foreground">{score}</p>
-        <p className="text-[10px] text-muted-foreground">Health Score</p>
+    <div className="relative flex flex-col items-center w-full">
+      {/* glow blob */}
+      <div
+        className="pointer-events-none absolute rounded-full blur-3xl"
+        style={{
+          width: 120, height: 80,
+          top: "30%", left: "50%",
+          transform: "translateX(-50%)",
+          background: glowColor,
+        }}
+      />
+
+      <svg width={size} height={size / 2 + 36} viewBox={`0 0 ${size} ${size / 2 + 36}`} overflow="visible">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#6ee7b7" />
+          </linearGradient>
+        </defs>
+
+        {/* track */}
+        <path
+          d={arcPath(Math.PI, 0)}
+          fill="none"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth={strokeW}
+          strokeLinecap="round"
+        />
+
+        {/* tick marks */}
+        {ticks.map((t) => {
+          const angle = Math.PI - (t / 100) * Math.PI;
+          const inner = { x: cx + (R - strokeW / 2 - 2) * Math.cos(angle), y: cy - (R - strokeW / 2 - 2) * Math.sin(angle) };
+          const outer = { x: cx + (R + strokeW / 2 + 2) * Math.cos(angle), y: cy - (R + strokeW / 2 + 2) * Math.sin(angle) };
+          return (
+            <line
+              key={t}
+              x1={inner.x} y1={inner.y}
+              x2={outer.x} y2={outer.y}
+              stroke="rgba(255,255,255,0.12)"
+              strokeWidth={t % 50 === 0 ? 2 : 1}
+            />
+          );
+        })}
+
+        {/* progress arc */}
+        {score > 0 && (
+          <path
+            d={arcPath(Math.PI, progressEnd)}
+            fill="none"
+            stroke={arcColor}
+            strokeWidth={strokeW}
+            strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 6px ${scoreColor}66)` }}
+          />
+        )}
+
+        {/* needle dot at progress tip */}
+        {score > 0 && (() => {
+          const tip = toXY(progressEnd);
+          return <circle cx={tip.x} cy={tip.y} r={5} fill={scoreColor} style={{ filter: `drop-shadow(0 0 4px ${scoreColor})` }} />;
+        })()}
+
+        {/* score number */}
+        <text x={cx} y={cy + 10} textAnchor="middle" fontSize="28" fontWeight="700" fontFamily="var(--font-mono, monospace)" fill={scoreColor}>
+          {score}
+        </text>
+        <text x={cx} y={cy + 25} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.45)" fontFamily="var(--font-sans, sans-serif)">
+          {label}
+        </text>
+      </svg>
+
+      {/* range labels */}
+      <div className="flex w-full justify-between px-4 mt-3" style={{ maxWidth: size }}>
+        <span className="text-[10px] text-muted-foreground">0</span>
+        <span className="text-[10px] text-muted-foreground font-medium" style={{ color: scoreColor }}>Health Score</span>
+        <span className="text-[10px] text-muted-foreground">100</span>
       </div>
     </div>
   );
 }
 
+// Tone config for InsightsFeed
+const TONE_CONFIG = {
+  positive: {
+    accent: "#34d399",
+    bg: "rgba(52,211,153,0.06)",
+    border: "rgba(52,211,153,0.25)",
+    icon: "✦",
+    label: "Positive",
+  },
+  warning: {
+    accent: "#fbbf24",
+    bg: "rgba(251,191,36,0.06)",
+    border: "rgba(251,191,36,0.25)",
+    icon: "⚠",
+    label: "Warning",
+  },
+  negative: {
+    accent: "#f87171",
+    bg: "rgba(248,113,113,0.06)",
+    border: "rgba(248,113,113,0.25)",
+    icon: "✕",
+    label: "Risk",
+  },
+  neutral: {
+    accent: "#94a3b8",
+    bg: "rgba(148,163,184,0.06)",
+    border: "rgba(148,163,184,0.18)",
+    icon: "→",
+    label: "Info",
+  },
+} as const;
+
 function InsightsFeed({ insights }: { insights: Insight[] }) {
-  const toneStyles: Record<Insight["tone"], string> = {
-    positive: "border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400",
-    warning: "border-yellow-500/30 bg-yellow-500/5 text-yellow-700 dark:text-yellow-400",
-    negative: "border-destructive/30 bg-destructive/5 text-destructive",
-    neutral: "border-border bg-muted/30 text-foreground",
-  };
   if (insights.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-8">No notable insights right now — everything looks steady.</p>;
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-2">
+        <span className="text-2xl">✦</span>
+        <p className="text-sm text-muted-foreground text-center">Everything looks steady — no notable signals.</p>
+      </div>
+    );
   }
   return (
     <div className="space-y-2">
-      {insights.map((ins, i) => (
-        <div key={i} className={cn("rounded-lg border px-3 py-2 text-sm", toneStyles[ins.tone])}>
-          {ins.text}
-        </div>
-      ))}
+      {insights.map((ins, i) => {
+        const cfg = TONE_CONFIG[ins.tone];
+        return (
+          <div
+            key={i}
+            className="relative flex items-start gap-3 rounded-lg px-3 py-2.5 overflow-hidden"
+            style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderLeft: `3px solid ${cfg.accent}` }}
+          >
+            {/* icon badge */}
+            <span
+              className="flex-shrink-0 flex items-center justify-center rounded-md text-[11px] font-bold mt-0.5"
+              style={{
+                width: 22, height: 22,
+                background: `${cfg.accent}22`,
+                color: cfg.accent,
+              }}
+            >
+              {cfg.icon}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: cfg.accent }}>
+                {cfg.label}
+              </p>
+              <p className="text-sm text-foreground leading-snug">{ins.text}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -516,29 +675,77 @@ function ProjectOverview() {
 
       {/* Budget metrics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
         <MetricCard
-          title="Total Allocated"
-          value={formatCurrency(totalAllocated, currency)}
-          subtitle={`${(totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0).toFixed(1)}% allocated`}
-          status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"}
-          icon={<ArrowDownCircle className="h-5 w-5" />}
+          title="Total Budget"
+          value={formatCurrency(totalBudget, currency)}
+          status="healthy"
+          icon={<Wallet className="h-4 w-4" />}
           isSimulated={simulation.isSimulating}
+          variant="violet"
         />
-        <MetricCard title="Remaining Budget" value={formatCurrency(remainingBudget, currency)} status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
-        <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
+        <MetricCard
+          title="Budget Allocated"
+          value={formatCurrency(totalAllocated, currency)}
+          status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"}
+          icon={<ArrowDownCircle className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
+          progressLabel="Allocated"
+          variant="cyan"
+        />
+        <MetricCard
+          title="Budget Remaining"
+          value={formatCurrency(remainingBudget, currency)}
+          status={balanceStatus}
+          trend={balanceStatus === "healthy" ? "up" : "down"}
+          icon={<PiggyBank className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
+          progressLabel="Remaining"
+          variant="amber"
+        />
+        <MetricCard
+          title="Profit / Loss"
+          value={formatCurrency(estimatedProfitLoss, currency)}
+          status={profitStatus}
+          trend={estimatedProfitLoss >= 0 ? "up" : "down"}
+          icon={<TrendingUp className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          variant="emerald"
+        />
       </div>
 
       {/* Health score + Insights */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5 flex flex-col items-center justify-center">
+        {/* Health gauge card */}
+        <div
+          className="relative overflow-hidden rounded-xl border border-border bg-card p-5 flex flex-col items-center justify-center gap-1"
+          style={{ background: "linear-gradient(135deg, rgba(52,211,153,0.04) 0%, rgba(30,30,40,0) 60%)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground self-start mb-1">Plan Health</p>
           <HealthGauge score={healthScore} />
         </div>
-        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
-          <h3 className="flex items-center gap-2 font-semibold text-foreground mb-3">
-            <Lightbulb className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-            Insights
-          </h3>
+
+        {/* Insights card */}
+        <div
+          className="relative overflow-hidden rounded-xl border border-border bg-card p-5 lg:col-span-2"
+          style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.03) 0%, rgba(30,30,40,0) 60%)" }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-sm"
+              style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
+            >
+              <Lightbulb className="h-4 w-4" />
+            </span>
+            <h3 className="font-semibold text-foreground">AI Insights</h3>
+            <span
+              className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide"
+              style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
+            >
+              {insights.length} signals
+            </span>
+          </div>
           <InsightsFeed insights={insights} />
         </div>
       </div>
@@ -842,10 +1049,44 @@ function EventOverview() {
 
       {/* Budget metrics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
-        <MetricCard title="Total Allocated" value={formatCurrency(totalAllocated, currency)} subtitle={`${(totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0).toFixed(1)}% allocated`} status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"} icon={<ArrowDownCircle className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
-        <MetricCard title="Remaining Budget" value={formatCurrency(remainingBudget, currency)} status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
-        <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-5 w-5" />} isSimulated={simulation.isSimulating} />
+        <MetricCard
+          title="Total Budget"
+          value={formatCurrency(totalBudget, currency)}
+          status="healthy"
+          icon={<Wallet className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          variant="violet"
+        />
+        <MetricCard
+          title="Budget Allocated"
+          value={formatCurrency(totalAllocated, currency)}
+          status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"}
+          icon={<ArrowDownCircle className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
+          progressLabel="Allocated"
+          variant="cyan"
+        />
+        <MetricCard
+          title="Budget Remaining"
+          value={formatCurrency(remainingBudget, currency)}
+          status={balanceStatus}
+          trend={balanceStatus === "healthy" ? "up" : "down"}
+          icon={<PiggyBank className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
+          progressLabel="Remaining"
+          variant="amber"
+        />
+        <MetricCard
+          title="Profit / Loss"
+          value={formatCurrency(estimatedProfitLoss, currency)}
+          status={profitStatus}
+          trend={estimatedProfitLoss >= 0 ? "up" : "down"}
+          icon={<TrendingUp className="h-4 w-4" />}
+          isSimulated={simulation.isSimulating}
+          variant="emerald"
+        />
       </div>
 
       {/* Health score + Insights */}

@@ -1,106 +1,163 @@
 "use client";
 
-import React from "react"
-
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import type { FinancialStatus } from "@/lib/types";
 
-interface MetricCardProps {
+// ─── Per-card colour tokens (inline styles — avoids Tailwind purge on dynamic classes) ──
+
+type CardVariant = "violet" | "cyan" | "amber" | "emerald";
+
+interface VariantTokens {
+  accent: string;   // the primary hex accent
+  accentBg: string; // 12% alpha version for icon bg + border tint
+  accentMid: string;// 25% alpha for left border
+}
+
+const VARIANTS: Record<CardVariant, VariantTokens> = {
+  violet: { accent: "#a78bfa", accentBg: "rgba(139,92,246,0.12)", accentMid: "rgba(139,92,246,0.55)" },
+  cyan: { accent: "#22d3ee", accentBg: "rgba(34,211,238,0.10)", accentMid: "rgba(34,211,238,0.55)" },
+  amber: { accent: "#fbbf24", accentBg: "rgba(251,191,36,0.10)", accentMid: "rgba(251,191,36,0.55)" },
+  emerald: { accent: "#34d399", accentBg: "rgba(52,211,153,0.10)", accentMid: "rgba(52,211,153,0.55)" },
+};
+
+// ─── Circular progress ────────────────────────────────────────────────────────
+
+function CircularProgress({ percent, accent }: { percent: number; accent: string }) {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const dash = (clamped / 100) * circ;
+  const gap = circ - dash;
+
+  return (
+    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: 48, height: 48 }}>
+      <svg width="48" height="48" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="24" cy="24" r={r} fill="none" stroke="currentColor" strokeWidth="3.5" className="text-border" />
+        <circle
+          cx="24" cy="24" r={r}
+          fill="none"
+          stroke={accent}
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${gap}`}
+          style={{ transition: "stroke-dasharray 0.55s ease" }}
+        />
+      </svg>
+      <span className="absolute text-[10px] font-semibold font-mono tabular-nums" style={{ color: accent }}>
+        {Math.round(clamped)}%
+      </span>
+    </div>
+  );
+}
+
+// ─── MetricCard ──────────────────────────────────────────────────────────────
+
+export interface MetricCardProps {
   title: string;
   value: string;
   subtitle?: string;
-  status?: FinancialStatus;
-  trend?: "up" | "down" | "neutral";
-  trendValue?: string;
+  status: FinancialStatus;
+  trend?: "up" | "down";
   icon?: React.ReactNode;
   isSimulated?: boolean;
+  progressPercent?: number;
+  progressLabel?: string;
+  variant?: CardVariant;
 }
 
 export function MetricCard({
   title,
   value,
   subtitle,
-  status = "healthy",
+  status,
   trend,
-  trendValue,
   icon,
-  isSimulated = false,
+  isSimulated,
+  progressPercent,
+  progressLabel,
+  variant = "violet",
 }: MetricCardProps) {
-  const statusColors: Record<FinancialStatus, string> = {
-    healthy: "border-success/30 bg-success/5",
-    warning: "border-warning/30 bg-warning/5",
-    risk: "border-danger/30 bg-danger/5",
-  };
-
-  const statusTextColors: Record<FinancialStatus, string> = {
-    healthy: "text-success",
-    warning: "text-warning",
-    risk: "text-danger",
-  };
-
-  const TrendIcon =
-    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const { accent, accentBg, accentMid } = VARIANTS[variant];
+  const showProgress = progressPercent !== undefined;
 
   return (
     <div
       className={cn(
-        "relative rounded-xl border p-5 transition-all",
-        statusColors[status],
-        isSimulated && "ring-2 ring-primary/50 ring-offset-2 ring-offset-background"
+        "relative overflow-hidden rounded-xl bg-card flex flex-col gap-3 p-4",
+        "border border-border",
+        "transition-all duration-200 hover:shadow-lg hover:-translate-y-px",
+        isSimulated && "ring-2 ring-primary/30"
       )}
+      style={{
+        borderLeft: `3px solid ${accentMid}`,
+      }}
     >
-      {isSimulated && (
-        <span className="absolute -top-2 right-3 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-          Simulated
-        </span>
-      )}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className={cn("mt-1 text-2xl font-bold", statusTextColors[status])}>
-            {value}
-          </p>
-          {subtitle && (
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-          )}
-        </div>
+      {/* top glow strip */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1px]"
+        style={{ background: `linear-gradient(to right, ${accent}55, transparent)` }}
+      />
+
+      {/* subtle inner bg tint at top-left to give depth */}
+      <div
+        className="pointer-events-none absolute left-0 top-0 h-24 w-24 rounded-full blur-2xl"
+        style={{ background: accentBg, transform: "translate(-30%, -30%)" }}
+      />
+
+      {/* ── Top row: icon + title ── */}
+      <div className="relative flex items-center gap-2.5">
         {icon && (
-          <div
-            className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg",
-              status === "healthy" && "bg-success/20 text-success",
-              status === "warning" && "bg-warning/20 text-warning",
-              status === "risk" && "bg-danger/20 text-danger"
-            )}
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: accentBg, color: accent }}
           >
             {icon}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-muted-foreground leading-tight truncate uppercase tracking-wide">
+            {title}
+          </p>
+          {isSimulated && (
+            <span className="text-[9px] font-semibold text-primary/70 tracking-widest uppercase">
+              simulated
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Bottom row: value + trend left, ring right ── */}
+      <div className="relative flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-lg font-semibold text-foreground font-mono tabular-nums leading-none">
+              {value}
+            </span>
+            {trend && (
+              <span
+                className="inline-flex items-center gap-0.5 text-[11px] font-semibold"
+                style={{ color: trend === "up" ? "#34d399" : "#f87171" }}
+              >
+                {trend === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              </span>
+            )}
           </div>
+
+          {subtitle && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground leading-none">{subtitle}</p>
+          )}
+          {progressLabel && showProgress && (
+            <p className="mt-1 text-[11px] leading-none" style={{ color: accent }}>
+              {progressLabel}
+            </p>
+          )}
+        </div>
+
+        {showProgress && (
+          <CircularProgress percent={progressPercent!} accent={accent} />
         )}
       </div>
-      {trend && trendValue && (
-        <div className="mt-3 flex items-center gap-1.5">
-          <TrendIcon
-            className={cn(
-              "h-4 w-4",
-              trend === "up" && "text-success",
-              trend === "down" && "text-danger",
-              trend === "neutral" && "text-muted-foreground"
-            )}
-          />
-          <span
-            className={cn(
-              "text-sm font-medium",
-              trend === "up" && "text-success",
-              trend === "down" && "text-danger",
-              trend === "neutral" && "text-muted-foreground"
-            )}
-          >
-            {trendValue}
-          </span>
-          <span className="text-xs text-muted-foreground">vs last month</span>
-        </div>
-      )}
     </div>
   );
 }
