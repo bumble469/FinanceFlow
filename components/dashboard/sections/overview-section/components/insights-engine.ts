@@ -1,4 +1,4 @@
-import type { Task, Milestone, Income, Expense } from "@/lib/types";
+import type { Task, Milestone } from "@/lib/types";
 
 export interface Insight {
   text: string;
@@ -14,13 +14,8 @@ export function computeHealthScore(params: {
 }): number {
   const { budgetUsedPct, progressPct, overdueMilestones, blockedTasks, totalTasks } = params;
 
-  // Budget component: penalize overspend relative to progress
   const budgetScore = budgetUsedPct <= 100 ? 100 - Math.max(0, budgetUsedPct - progressPct) : Math.max(0, 60 - (budgetUsedPct - 100));
-
-  // Schedule component: penalize overdue milestones
   const scheduleScore = Math.max(0, 100 - overdueMilestones * 15);
-
-  // Execution component: penalize blocked task ratio
   const blockedRatio = totalTasks > 0 ? blockedTasks / totalTasks : 0;
   const executionScore = Math.max(0, 100 - blockedRatio * 100);
 
@@ -35,7 +30,6 @@ export function generateInsights(params: {
   overdueMilestones: Milestone[];
   blockedTasks: Task[];
   departmentStats: { name: string; budgetUsedPct: number; completionPct: number; openTasks: number }[];
-  incomeByType: Record<string, number>;
   totalExpenses: number;
   expensesByCategory: Record<string, number>;
   daysLeft?: number | null;
@@ -84,9 +78,12 @@ export function generateInsights(params: {
   }
 
   if (totalExpenses > 0) {
-    const [topCategory, topAmount] = Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1])[0] ?? [];
-    if (topCategory && topAmount / totalExpenses > 0.5) {
-      insights.push({ text: `${Math.round((topAmount / totalExpenses) * 100)}% of expenses belong to ${topCategory}.`, tone: "neutral" });
+    const sorted = Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]);
+    if (sorted.length > 0) {
+      const [topCategory, topAmount] = sorted[0];
+      if (topAmount / totalExpenses > 0.5) {
+        insights.push({ text: `${Math.round((topAmount / totalExpenses) * 100)}% of expenses belong to ${topCategory}.`, tone: "neutral" });
+      }
     }
   }
 
@@ -99,5 +96,5 @@ export function generateInsights(params: {
     }
   }
 
-  return insights.slice(0, 6); // keep it scannable, not overwhelming
+  return insights.slice(0, 6);
 }

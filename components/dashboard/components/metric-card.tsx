@@ -1,8 +1,34 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import type { FinancialStatus } from "@/lib/types";
+
+// Local count-up animation — mirrors the shared overview-section hook,
+// duplicated here since this component lives outside that folder.
+function useCountUp(target: number, duration = 700) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(target * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else setValue(target);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration]);
+
+  return value;
+}
 
 // ─── Per-card colour tokens (inline styles — avoids Tailwind purge on dynamic classes) ──
 
@@ -27,7 +53,8 @@ function CircularProgress({ percent, accent }: { percent: number; accent: string
   const r = 18;
   const circ = 2 * Math.PI * r;
   const clamped = Math.min(100, Math.max(0, percent));
-  const dash = (clamped / 100) * circ;
+  const animated = useCountUp(clamped, 800);
+  const dash = (animated / 100) * circ;
   const gap = circ - dash;
 
   return (
@@ -41,11 +68,10 @@ function CircularProgress({ percent, accent }: { percent: number; accent: string
           strokeWidth="3.5"
           strokeLinecap="round"
           strokeDasharray={`${dash} ${gap}`}
-          style={{ transition: "stroke-dasharray 0.55s ease" }}
         />
       </svg>
       <span className="absolute text-[10px] font-semibold font-mono tabular-nums" style={{ color: accent }}>
-        {Math.round(clamped)}%
+        {Math.round(animated)}%
       </span>
     </div>
   );
