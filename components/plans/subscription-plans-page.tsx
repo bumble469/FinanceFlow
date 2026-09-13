@@ -5,6 +5,7 @@ import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan, AccountSubscription, BillingInterval } from "@/lib/types";
+import { Loader } from "@/components/shared/loader";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: "₹",
@@ -66,7 +67,9 @@ export function SubscriptionPlansPage({ onSelected }: { onSelected?: () => void 
     if (freePrice) await selectPlan(freePrice.id);
   };
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading plans...</div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center">
+    <Loader label="Loading plan..." />
+  </div>;
 
   const availableIntervals = (["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"] as BillingInterval[]).filter(
     (i) => plans.some((p) => p.prices.some((pr) => pr.billingInterval === i))

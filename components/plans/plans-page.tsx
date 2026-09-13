@@ -18,6 +18,7 @@ import type { Plan } from "@/lib/types";
 import axios from "axios";
 import { authClient } from "@/lib/auth-client";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Loader } from "@/components/shared/loader";
 
 function mapWorkItemToPlan(workItem: any): Plan {
   return {
@@ -147,7 +148,7 @@ export function PlansPage() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-muted-foreground">Loading plans...</p>
+        <Loader label="Loading plans..." />
       </div>
     );
   }

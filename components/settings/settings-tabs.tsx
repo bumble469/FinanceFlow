@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TopNav } from "@/components/layout/top-nav";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +39,6 @@ export function SettingsTabs() {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopNav />
       <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
         <div className="space-y-8">
           <div className="space-y-2">

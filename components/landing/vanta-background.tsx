@@ -1,125 +1,28 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import Lightfall from './Lightfall'
 
-declare global {
-  interface Window {
-    THREE?: any
-    VANTA?: any
-  }
-}
-
-interface VantaBackgroundProps {
-  color?: number
-  backgroundColor?: number
-  points?: number
-  maxDistance?: number
-  spacing?: number
-  showDots?: boolean
-  opacity?: number
-  className?: string
-}
-
-export function VantaBackground({
-  color = 0x10b981, // Emerald green matching the FinanceFlow branding
-  backgroundColor = 0x090d16, // Dark slate background matching the theme
-  points = 9.0, // Reduced density for cleaner, unobtrusive aesthetic
-  maxDistance = 20.0,
-  spacing = 18.0,
-  showDots = true,
-  opacity = 0.35, // Soft ambient opacity so it never outshines content
-  className = '',
-}: VantaBackgroundProps) {
-  const vantaRef = useRef<HTMLDivElement>(null)
-  const effectRef = useRef<any>(null)
-
-  useEffect(() => {
-    let timer: any = null
-
-    const initVanta = () => {
-      if (!vantaRef.current) return false
-      if (typeof window === 'undefined') return false
-      if (!window.VANTA?.NET || !window.THREE) return false
-
-      if (effectRef.current) {
-        try {
-          effectRef.current.destroy()
-        } catch {
-          // ignore
-        }
-        effectRef.current = null
-      }
-
-      try {
-        effectRef.current = window.VANTA.NET({
-          el: vantaRef.current,
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: false,
-          minHeight: 200.0,
-          minWidth: 200.0,
-          scale: 1.0,
-          scaleMobile: 1.0,
-          color,
-          backgroundColor,
-          points,
-          maxDistance,
-          spacing,
-          showDots,
-        })
-        return true
-      } catch (err) {
-        console.warn('[Vanta] Init error:', err)
-        return false
-      }
-    }
-
-    // Try immediately
-    if (!initVanta()) {
-      let attempts = 0
-      timer = setInterval(() => {
-        attempts++
-        if (initVanta() || attempts > 60) {
-          clearInterval(timer)
-        }
-      }, 100)
-    }
-
-    const handleResize = () => {
-      if (effectRef.current && typeof effectRef.current.resize === 'function') {
-        effectRef.current.resize()
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      if (timer) clearInterval(timer)
-      window.removeEventListener('resize', handleResize)
-      if (effectRef.current) {
-        try {
-          effectRef.current.destroy()
-        } catch {
-          // ignore
-        }
-        effectRef.current = null
-      }
-    }
-  }, [color, backgroundColor, points, maxDistance, spacing, showDots])
-
+export function VantaBackground() {
   return (
-    <div
-      className={`fixed inset-0 z-0 pointer-events-none overflow-hidden ${className}`}
-      aria-hidden="true"
-    >
-      {/* Vanta Canvas target with calibrated soft opacity */}
-      <div
-        ref={vantaRef}
-        className="absolute inset-0 h-full w-full transition-opacity duration-1000"
-        style={{ opacity }}
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      <Lightfall
+        colors={['#10b981', '#34d399', '#6ee7b7']}
+        backgroundColor="#090d16"
+        speed={0.5}
+        streakCount={2}
+        streakWidth={1}
+        streakLength={1}
+        glow={0.6}
+        density={0.6}
+        twinkle={1}
+        zoom={3}
+        backgroundGlow={0.25}
+        opacity={0.45}
+        mouseInteraction
+        mouseStrength={0.5}
+        mouseRadius={1}
       />
 
-      {/* Gentle ambient vignette overlay so foreground text has pristine contrast */}
       <div
         className="absolute inset-0"
         style={{

@@ -14,7 +14,7 @@ import { Menu, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFinancialStore } from "@/lib/store";
-import type { Plan } from "@/lib/types";
+import { Loader } from "@/components/shared/loader";
 import { getPermissions } from "@/lib/permissions";
 import { useRealtimePermissions } from "@/hooks/use-realtime-permissions";
 import { Workspace } from "./sections/workspace-section/workspace";
@@ -36,7 +36,7 @@ export function DashboardLayout({ planId }: DashboardLayoutProps) {
   if (!currentPlanMeta || currentPlanMeta.id !== planId) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading plan...</p>
+        <Loader label="Loading plan..." />
       </div>
     );
   }

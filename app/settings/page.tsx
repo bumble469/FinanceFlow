@@ -1,4 +1,5 @@
 import { SettingsTabs } from "@/components/settings/settings-tabs";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata = {
   title: "Settings - FinanceFlow",
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function SettingsPage() {
-  return <SettingsTabs />;
+  return (
+    <AppShell>
+      <SettingsTabs />
+    </AppShell>
+  );
 }
