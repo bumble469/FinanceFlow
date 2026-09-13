@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { bouncy } from "ldrs";
 
 interface LoaderProps {
   label?: string;
@@ -15,7 +14,9 @@ export function Loader({
   className = "",
 }: LoaderProps) {
   useEffect(() => {
-    bouncy.register();
+    import("ldrs").then(({ bouncy }) => {
+      bouncy.register();
+    });
   }, []);
 
   return (

@@ -101,13 +101,15 @@ export function LogoutSection() {
               variant="outline"
               onClick={() => setOpenDialog(null)}
               disabled={loading}
+              className="cursor-pointer hover:text-gray-600"
             >
               Cancel
             </Button>
             <Button
-              variant="default"
+              variant="destructive"
               onClick={() => handleLogout(false)}
               disabled={loading}
+              className="cursor-pointer hover:!bg-red-900"
             >
               {loading ? "Logging out..." : "Log out"}
             </Button>
@@ -133,6 +135,7 @@ export function LogoutSection() {
               variant="outline"
               onClick={() => setOpenDialog(null)}
               disabled={loading}
+              className="cursor-pointer hover:text-gray-600"
             >
               Cancel
             </Button>
@@ -140,6 +143,7 @@ export function LogoutSection() {
               variant="destructive"
               onClick={() => handleLogout(true)}
               disabled={loading}
+              className="cursor-pointer hover:!bg-red-900"
             >
               {loading ? "Logging out..." : "Log out of all devices"}
             </Button>
