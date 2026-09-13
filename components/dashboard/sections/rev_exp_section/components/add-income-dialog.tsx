@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Income, IncomeType, Stall } from "@/lib/types";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 interface Props {
   open: boolean;
@@ -49,6 +51,7 @@ export function AddIncomeDialog({ open, onOpenChange, editing, onClose, workItem
   const [errors, setErrors] = useState<Partial<Record<keyof typeof EMPTY, string>>>({});
   const [loading, setLoading] = useState(false);
   const [stalls, setStalls] = useState<Stall[]>([]);
+  const { locked, lockedByName, otherEditors } = useEditLock("income", editing?.id ?? null, open && !!editing);
 
   useEffect(() => {
     if (!open || !isEvent) return;
@@ -94,7 +97,7 @@ export function AddIncomeDialog({ open, onOpenChange, editing, onClose, workItem
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validate() || locked) return;
     setLoading(true);
 
     const payload = {
@@ -142,8 +145,17 @@ export function AddIncomeDialog({ open, onOpenChange, editing, onClose, workItem
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit income" : "Add income"}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{editing ? "Edit income" : "Add income"}</DialogTitle>
+            <EditingPresenceIndicator editors={otherEditors} />
+          </div>
         </DialogHeader>
+
+        {locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}.
+          </div>
+        )}
 
         <div className="space-y-4 pt-2">
           {/* Type */}
@@ -296,7 +308,7 @@ export function AddIncomeDialog({ open, onOpenChange, editing, onClose, workItem
             <Button variant="outline" onClick={onClose} disabled={loading} className="cursor-pointer hover:text-gray-600">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={loading} className="cursor-pointer">
+            <Button onClick={handleSubmit} disabled={loading || locked} className="cursor-pointer">
               {loading ? "Saving..." : editing ? "Update" : "Add"} income
             </Button>
           </div>

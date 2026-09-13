@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import type { Expense, ExpenseCategory, Stall } from "@/lib/types";
 import { authClient } from "@/lib/auth-client";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 interface Props {
   open: boolean;
@@ -62,6 +64,7 @@ export function AddExpenseDialog({ open, onOpenChange, editing, onClose, workIte
   const [loading, setLoading] = useState(false);
   const [stalls, setStalls] = useState<Stall[]>([]);
   const [hardwareItems, setHardwareItems] = useState<{ id: string; name: string }[]>([]);
+  const { locked, lockedByName, otherEditors } = useEditLock("expense", editing?.id ?? null, open && !!editing);
 
   useEffect(() => {
     if (!open || !isEvent) return;
@@ -110,7 +113,7 @@ export function AddExpenseDialog({ open, onOpenChange, editing, onClose, workIte
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validate() || locked) return;
     setLoading(true);
     const payload = {
       workItemId,
@@ -157,8 +160,17 @@ export function AddExpenseDialog({ open, onOpenChange, editing, onClose, workIte
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit expense" : "Add expense"}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{editing ? "Edit expense" : "Add expense"}</DialogTitle>
+            <EditingPresenceIndicator editors={otherEditors} />
+          </div>
         </DialogHeader>
+
+        {locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}.
+          </div>
+        )}
 
         <div className="space-y-4 pt-2">
           {/* Category */}
@@ -339,7 +351,7 @@ export function AddExpenseDialog({ open, onOpenChange, editing, onClose, workIte
             <Button variant="outline" onClick={onClose} disabled={loading} className="cursor-pointer hover:text-gray-600">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={loading} className="cursor-pointer">
+            <Button onClick={handleSubmit} disabled={loading || locked} className="cursor-pointer">
               {loading ? "Saving..." : editing ? "Update" : "Add"} expense
             </Button>
           </div>

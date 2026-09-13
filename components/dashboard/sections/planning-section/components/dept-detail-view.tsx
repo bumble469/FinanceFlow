@@ -25,6 +25,7 @@ export function DepartmentDetailView({
   canEditModule,
   canDeleteModule,
   canAddTask,
+  canEditTask,
   canDeleteTask,
   canApproveTaskSubmissions,
 }: {
@@ -39,6 +40,7 @@ export function DepartmentDetailView({
   canEditModule?: boolean;
   canDeleteModule?: boolean;
   canAddTask?: boolean;
+  canEditTask?: boolean;
   canDeleteTask?: boolean;
   canApproveTaskSubmissions?: boolean;
 }) {
@@ -97,6 +99,7 @@ export function DepartmentDetailView({
           module={activeModule}
           onBack={() => setActiveModule(null)}
           canAddTask={canAddTask}
+          canEditTask={canEditTask}
           canDeleteTask={canDeleteTask}
           canApproveTaskSubmissions={canApproveTaskSubmissions}
         />

@@ -48,10 +48,12 @@ type EventTaskListViewProps = {
   onDelete: (id: string) => void;
   canApproveSubmissions?: boolean;
   onSubmissionReviewed?: () => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export function EventTaskListView({
-  tasks, workItemId, deptId, onStatusChange, onEdit, onDelete, canApproveSubmissions, onSubmissionReviewed,
+  tasks, workItemId, deptId, onStatusChange, onEdit, onDelete, canApproveSubmissions, onSubmissionReviewed, canEdit, canDelete,
 }: EventTaskListViewProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [pendingSubmissions, setPendingSubmissions] = useState<Record<string, any>>({});
@@ -162,12 +164,16 @@ export function EventTaskListView({
                 <Button size="icon" variant="ghost" onClick={() => setSelectedTaskId(t.id)} className="cursor-pointer">
                   <Users className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => onEdit(t)} className="cursor-pointer">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} className="cursor-pointer">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {canEdit && (
+                  <Button size="icon" variant="ghost" onClick={() => onEdit(t)} className="cursor-pointer">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button size="icon" variant="ghost" onClick={() => onDelete(t.id)} className="cursor-pointer">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
           );

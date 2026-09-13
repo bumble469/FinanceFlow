@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { getPlanAccess } from "@/lib/get-plan-access";
+import { canAssignRole } from "@/lib/permissions";
 
 // GET: list all members of a plan
 export async function GET(
@@ -126,6 +128,13 @@ export async function POST(
     }
 
     const { id: planId } = await params;
+
+    const access = await getPlanAccess(planId, user.sub);
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!access.permissions.canInviteMember) {
+      return NextResponse.json({ error: "You don't have permission to add members to this plan" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const { userId, role, departmentIds = [], monthlyCost } = body;
@@ -134,6 +143,13 @@ export async function POST(
       return NextResponse.json(
         { error: "userId is required" },
         { status: 400 }
+      );
+    }
+
+    if (!canAssignRole(access.role, role || "MEMBER")) {
+      return NextResponse.json(
+        { error: "Only the plan owner or an admin can assign the Admin or Co-Admin role" },
+        { status: 403 }
       );
     }
 

@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 
 import type { Role, Department } from "@/lib/types";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 type AllowedRole = Exclude<Role, "ADMIN">;
 
@@ -90,6 +92,7 @@ export function AddEditMemberDialog({
   const [userSelected, setUserSelected] = useState(false);
   const [budgetSnapshot, setBudgetSnapshot] = useState<BudgetSnapshot | null>(null);
   const [departmentCostShares, setDepartmentCostShares] = useState<Record<string, string>>({});
+  const { locked, lockedByName, otherEditors } = useEditLock("member", initialData?.id ?? null, open && isEditMode);
 
   useEffect(() => {
     if (!open) return;
@@ -241,7 +244,7 @@ export function AddEditMemberDialog({
   const budgetError = getBudgetError();
 
   const handleSubmit = () => {
-    if (!formData.id || !formData.role) return;
+    if (!formData.id || !formData.role || locked) return;
 
     onSubmit({
       id: formData.id,
@@ -279,10 +282,19 @@ export function AddEditMemberDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? "Edit Member" : "Invite Member"}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {isEditMode ? "Edit Member" : "Invite Member"}
+            </DialogTitle>
+            <EditingPresenceIndicator editors={otherEditors} />
+          </div>
         </DialogHeader>
+
+        {locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}.
+          </div>
+        )}
 
         <div className="space-y-4 pt-4">
           {/* Invite Mode */}
@@ -508,7 +520,7 @@ export function AddEditMemberDialog({
 
             <Button
               onClick={handleSubmit}
-              disabled={!userSelected || !formData.role || !!budgetError}
+              disabled={!userSelected || !formData.role || !!budgetError || locked}
               className="cursor-pointer"
             >
               {isEditMode ? "Save Changes" : "Send Invitation"}

@@ -279,6 +279,30 @@ export function PermissionsDialog({ open, onOpenChange, member, planId, onSaved 
                       setCoAdminPerms((p) => ({ ...p, phases: { ...p.phases, delete: v } }))
                     }
                   />
+                  <SwitchRow
+                    label="Add tasks"
+                    description="Can create new tasks across all departments"
+                    checked={coAdminPerms.tasks.create}
+                    onCheckedChange={(v) =>
+                      setCoAdminPerms((p) => ({ ...p, tasks: { ...p.tasks, create: v } }))
+                    }
+                  />
+                  <SwitchRow
+                    label="Edit tasks"
+                    description="Can edit task details (title, description, due date) across all departments"
+                    checked={coAdminPerms.tasks.edit}
+                    onCheckedChange={(v) =>
+                      setCoAdminPerms((p) => ({ ...p, tasks: { ...p.tasks, edit: v } }))
+                    }
+                  />
+                  <SwitchRow
+                    label="Delete tasks"
+                    description="Can delete tasks across all departments"
+                    checked={coAdminPerms.tasks.delete}
+                    onCheckedChange={(v) =>
+                      setCoAdminPerms((p) => ({ ...p, tasks: { ...p.tasks, delete: v } }))
+                    }
+                  />
                 </TabsContent>
               )}
 
@@ -473,6 +497,17 @@ export function PermissionsDialog({ open, onOpenChange, member, planId, onSaved 
                       checked={coAdminPerms.canManagePermissions}
                       onCheckedChange={(v) =>
                         setCoAdminPerms((p) => ({ ...p, canManagePermissions: v }))
+                      }
+                    />
+                  )}
+
+                  {role === "CO_ADMIN" && (
+                    <SwitchRow
+                      label="Manage plan settings"
+                      description="Can change plan-wide settings like multi-user editing"
+                      checked={coAdminPerms.planSettings.edit}
+                      onCheckedChange={(v) =>
+                        setCoAdminPerms((p) => ({ ...p, planSettings: { edit: v } }))
                       }
                     />
                   )}

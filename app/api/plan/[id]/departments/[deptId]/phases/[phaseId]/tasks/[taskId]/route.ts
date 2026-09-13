@@ -71,7 +71,7 @@ export async function PATCH(
 
     const access = await getPlanAccess(workItemId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    if (!access.permissions.canAddTask(deptId)) {
+    if (!access.permissions.canEditTask(deptId)) {
       return NextResponse.json({ error: "You don't have permission to edit tasks in this department" }, { status: 403 });
     }
 

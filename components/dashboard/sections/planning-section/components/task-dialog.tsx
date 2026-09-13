@@ -1,11 +1,13 @@
 // components/task-dialog.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Task } from "@/lib/types";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 export interface TaskRequirementInput {
   requireApproval: boolean;
@@ -45,27 +47,56 @@ export function TaskDialog({
   const [requirement, setRequirement] = useState<TaskRequirementInput>(DEFAULT_REQUIREMENT);
   const [showRequirements, setShowRequirements] = useState(false);
   const [dueDate, setDueDate] = useState("");
+  const originalRef = useRef({ title: "", description: "", dueDate: "" });
+  const { locked, lockedByName, allowMultipleEditing, otherEditors } = useEditLock(
+    "task",
+    editingTask?.id ?? null,
+    open && !!editingTask
+  );
 
   useEffect(() => {
     if (open) {
-      setTitle(editingTask?.title ?? "");
-      setDescription(editingTask?.description ?? "");
+      const t = editingTask?.title ?? "";
+      const d = editingTask?.description ?? "";
+      const due = editingTask?.dueDate ? editingTask.dueDate.split("T")[0] : "";
+      setTitle(t);
+      setDescription(d);
+      setDueDate(due);
       setRequirement(editingTask?.requirement ?? DEFAULT_REQUIREMENT);
       setShowRequirements(false);
-      setDueDate(editingTask?.dueDate ? editingTask.dueDate.split("T")[0] : "");
+      originalRef.current = { title: t, description: d, dueDate: due };
     }
   }, [open, editingTask]);
 
   if (!open) return null;
 
   const handleSave = () => {
-    if (!title.trim()) return;
-    onSave({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      dueDate: dueDate || undefined,
-      requirement,
-    });
+    if (!title.trim() || locked) return;
+
+    if (editingTask) {
+      // Only include fields the user actually changed, so a concurrent edit
+      // to a different field (title vs due date, etc.) from another user
+      // isn't silently clobbered by this save.
+      const payload: { title?: string; description?: string; dueDate?: string; requirement: TaskRequirementInput } = {
+        requirement,
+      };
+      const trimmedTitle = title.trim();
+      const trimmedDesc = description.trim() || undefined;
+      const nextDue = dueDate || undefined;
+
+      if (trimmedTitle !== originalRef.current.title) payload.title = trimmedTitle;
+      if (trimmedDesc !== (originalRef.current.description || undefined)) payload.description = trimmedDesc;
+      if (nextDue !== (originalRef.current.dueDate || undefined)) payload.dueDate = nextDue;
+
+      onSave(payload as { title: string; description?: string; dueDate?: string; requirement: TaskRequirementInput });
+    } else {
+      onSave({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        dueDate: dueDate || undefined,
+        requirement,
+      });
+    }
   };
 
   const patchReq = (patch: Partial<TaskRequirementInput>) => setRequirement((prev) => ({ ...prev, ...patch }));
@@ -73,9 +104,18 @@ export function TaskDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-96 max-h-[90vh] overflow-y-auto rounded-xl border bg-card p-5 shadow-xl space-y-4">
-        <h3 className="font-semibold">
-          {editingTask ? "Edit Task" : "New Task"}
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">
+            {editingTask ? "Edit Task" : "New Task"}
+          </h3>
+          <EditingPresenceIndicator editors={otherEditors} />
+        </div>
+
+        {!allowMultipleEditing && locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}. You can view this task but can't save changes until they're done.
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="task-title">Title</Label>
@@ -89,6 +129,7 @@ export function TaskDialog({
               if (e.key === "Escape") onClose();
             }}
             placeholder="Task title"
+            disabled={locked}
           />
         </div>
 
@@ -101,6 +142,7 @@ export function TaskDialog({
             onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
             placeholder="Add a description..."
             rows={3}
+            disabled={locked}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
           />
         </div>
@@ -112,6 +154,7 @@ export function TaskDialog({
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
+            disabled={locked}
           />
         </div>
 
@@ -209,7 +252,7 @@ export function TaskDialog({
 
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" className="cursor-pointer" onClick={onClose}>Cancel</Button>
-          <Button size="sm" disabled={!title.trim()} onClick={handleSave} className="cursor-pointer">
+          <Button size="sm" disabled={!title.trim() || locked} onClick={handleSave} className="cursor-pointer">
             {editingTask ? "Save changes" : "Add task"}
           </Button>
         </div>

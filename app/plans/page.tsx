@@ -1,5 +1,5 @@
 import { PlansPage } from "@/components/plans/plans-page";
-import { TopNav } from "@/components/layout/top-nav";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata = {
   title: "Plans - FinanceFlow",
@@ -8,11 +8,8 @@ export const metadata = {
 
 export default function PlansPageRoute() {
   return (
-    <div className="min-h-screen bg-background">
-      <TopNav />
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-        <PlansPage />
-      </main>
-    </div>
+    <AppShell>
+      <PlansPage />
+    </AppShell>
   );
 }

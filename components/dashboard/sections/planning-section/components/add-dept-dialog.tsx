@@ -11,6 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 type Dept = {
   id: string;
@@ -48,6 +50,12 @@ export function AddDeptDialog({
   const isEdit = !!editingDept;
   const numericBudget = Number(budget);
 
+  const { locked, lockedByName, otherEditors } = useEditLock(
+    "department",
+    editingDept?.id ?? null,
+    open && isEdit
+  );
+
   useEffect(() => {
     if (editingDept) {
       setName(editingDept.name);
@@ -66,7 +74,7 @@ export function AddDeptDialog({
     (maxBudget >= 0 && numericBudget > maxBudget);
 
   const handleSubmit = async () => {
-    if (isInvalid) return;
+    if (isInvalid || locked) return;
 
     setLoading(true);
 
@@ -111,10 +119,19 @@ export function AddDeptDialog({
 
       <DialogContent className="space-y-6">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit Department" : "Create Department"}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {isEdit ? "Edit Department" : "Create Department"}
+            </DialogTitle>
+            <EditingPresenceIndicator editors={otherEditors} />
+          </div>
         </DialogHeader>
+
+        {locked && (
+          <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            Currently being edited by {lockedByName}. You can view this department but can't save changes until they're done.
+          </div>
+        )}
 
         <div className="space-y-5">
           {/* NAME */}
@@ -127,6 +144,7 @@ export function AddDeptDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="Marketing, Tech..."
               autoFocus
+              disabled={locked}
             />
           </div>
 
@@ -143,6 +161,7 @@ export function AddDeptDialog({
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSubmit();
               }}
+              disabled={locked}
             />
 
             {budget && maxBudget >= 0 && numericBudget > maxBudget && (
@@ -156,15 +175,15 @@ export function AddDeptDialog({
         <Button
           className="w-full mt-2 cursor-pointer"
           onClick={handleSubmit}
-          disabled={isInvalid || loading}
+          disabled={isInvalid || loading || locked}
         >
           {loading
             ? isEdit
               ? "Saving..."
               : "Creating..."
             : isEdit
-            ? "Save Changes"
-            : "Create"}
+              ? "Save Changes"
+              : "Create"}
         </Button>
       </DialogContent>
     </Dialog>

@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TopNav } from "@/components/layout/top-nav";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogoutSection } from "@/components/settings/logout-section";
-import { EmailUpdatesToggle } from "@/components/settings/email-updates-toggle";
 import { authClient } from "@/lib/auth-client";
 import type { AccountSubscription } from "@/lib/types";
 import Link from "next/link";
@@ -41,7 +39,6 @@ export function SettingsTabs() {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopNav />
       <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
         <div className="space-y-8">
           <div className="space-y-2">
@@ -53,7 +50,6 @@ export function SettingsTabs() {
             <TabsList>
               <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
               <TabsTrigger value="account" className="cursor-pointer">Account</TabsTrigger>
-              <TabsTrigger value="preferences" className="cursor-pointer">Preferences</TabsTrigger>
               <TabsTrigger value="subscription" className="cursor-pointer">Subscription</TabsTrigger>
             </TabsList>
 
@@ -93,28 +89,6 @@ export function SettingsTabs() {
                   <li>Update account name</li>
                   <li>Manage team members (Company accounts)</li>
                 </ul>
-              </Card>
-            </TabsContent>
-
-            {/* PREFERENCES TAB */}
-            <TabsContent value="preferences" className="space-y-6">
-              <Card className="border border-border bg-card p-6">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                  Preferences
-                </h2>
-                <p className="text-muted-foreground mb-4">
-                  Customize your experience.
-                </p>
-
-                <EmailUpdatesToggle />
-
-                <div className="mt-8 pt-6 border-t border-border">
-                  <p className="text-sm text-muted-foreground italic">Future features:</p>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
-                    <li>Theme selection (light/dark)</li>
-                    <li>Currency preference</li>
-                  </ul>
-                </div>
               </Card>
             </TabsContent>
 

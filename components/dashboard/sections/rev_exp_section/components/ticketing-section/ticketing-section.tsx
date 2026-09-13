@@ -14,6 +14,7 @@ import { UpiQrManager } from "./components/upi-qr-manager";
 import { TicketViewDialog } from "./components/ticket-view-dialog";
 import type { PlanPermissions } from "@/lib/permissions";
 import type { TicketType, TicketBooking } from "@/lib/types";
+import { fetchTicketingAndStalls } from "@/lib/fetch-ticketing-stalls";
 
 function fmt(value: number, currency: string) {
   const symbol = getCurrencySymbol(currency);
@@ -115,13 +116,11 @@ export function TicketingSection({
   embedded?: boolean;
   maxHeight?: number | null;
 }) {
-  const { currency, currentPlanMeta } = useFinancialStore();
+  const { currency, currentPlanMeta, ticketTypes, ticketBookings: bookings } = useFinancialStore();
   const { show } = useSnackbar();
 
   const [tab, setTab] = useState<"types" | "bookings">("bookings");
-  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
-  const [bookings, setBookings] = useState<TicketBooking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = false;
 
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<TicketType | null>(null);
@@ -134,23 +133,13 @@ export function TicketingSection({
 
   const fetchAll = async () => {
     if (!planId) return;
-    setLoading(true);
     try {
-      const [typesRes, bookingsRes] = await Promise.all([
-        authClient.request(`/api/plan/${planId}/ticket-types`),
-        authClient.request(`/api/plan/${planId}/ticket-bookings`),
-      ]);
-      setTicketTypes(typesRes.data.data ?? []);
-      setBookings(bookingsRes.data.data ?? []);
+      await fetchTicketingAndStalls(planId, { hasTicketing: true });
     } catch (err) {
       console.error("Fetch ticketing data failed:", err);
       show("Failed to fetch ticketing data", "error");
-    } finally {
-      setLoading(false);
     }
   };
-
-  useEffect(() => { fetchAll(); }, [planId]);
 
   const saveTicketType = async (data: { name: string; price: number; capacity?: number | null; description?: string }) => {
     if (editingType) {
@@ -166,7 +155,7 @@ export function TicketingSection({
   const deleteTicketType = async (id: string) => {
     try {
       await authClient.request(`/api/plan/${planId}/ticket-types/${id}`, { method: "DELETE" });
-      setTicketTypes((prev) => prev.filter((t) => t.id !== id));
+      await fetchAll();
       show("Ticket type deleted", "success");
     } catch (err: any) {
       show(err?.response?.data?.error || "Failed to delete ticket type", "error");

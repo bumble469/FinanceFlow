@@ -1,19 +1,15 @@
 'use client'
 
-import React from "react"
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
 
-import { AuthCard } from '@/components/auth/auth-card'
-import { AccountTypeToggle } from '@/components/auth/account-type-toggle'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FcGoogle } from "react-icons/fc"
-
-import { Reveal } from '@/components/animate/reveal'
-import { Stagger, StaggerItem } from '@/components/animate/stagger'
-import { Eye, EyeOff } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { AccountTypeToggle } from '@/components/auth/account-type-toggle'
+import { RiveRobot } from '@/components/auth/rive-robot'
 
 interface SignupFormValues {
   accountType: 'individual' | 'company'
@@ -42,9 +38,18 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
   })
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
+
+  // Robot animation triggers
+  const [triggerFail, setTriggerFail] = useState(0)
+  const [triggerSuccess, setTriggerSuccess] = useState(0)
+
+  const [loading, setLoading] = useState(false)
+  const [isSuccessState, setIsSuccessState] = useState(false)
+  const [touched, setTouched] = useState<Partial<Record<keyof SignupFormValues, boolean>>>({})
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
@@ -78,59 +83,12 @@ export default function SignupPage() {
     }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          name: formData.name,
-          accountType: formData.accountType,
-          accountName: formData.accountType === 'company' ? formData.companyName : undefined,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        if (json.errors) {
-          setErrors(json.errors);
-        } else {
-          setErrors({ email: json.error || 'Signup failed' });
-        }
-        return;
-      }
-
-      document.cookie = `access_token=${json.data.accessToken}; path=/; max-age=${15 * 60}; samesite=lax`;
-      window.location.href = '/onboarding/plan';
-      
-    } catch (err) {
-      console.error('Signup failed:', err);
-      setErrors({ email: 'Something went wrong. Please try again.' });
+    if (Object.keys(newErrors).length > 0) {
+      setTriggerFail((prev) => prev + 1)
+      return false
     }
-  };
-
-  const handleAccountTypeChange = (value: 'individual' | 'company') => {
-    setFormData({ ...formData, accountType: value, companyName: '' })
-    if (errors.accountType || errors.companyName) {
-      setErrors({ ...errors, accountType: undefined, companyName: undefined })
-    }
+    return true
   }
-
-  const handleGoogleSignup = () => {
-    window.location.href = '/api/auth/google'
-  }
-
-  const [touched, setTouched] = useState<Partial<Record<keyof SignupFormValues, boolean>>>({})
 
   const validateField = (name: keyof SignupFormValues, value: string) => {
     const newErrors = { ...errors }
@@ -169,7 +127,6 @@ export default function SignupPage() {
         } else {
           delete newErrors.password
         }
-        // re-validate confirmPassword if already touched
         if (touched.confirmPassword) {
           if (formData.confirmPassword && value !== formData.confirmPassword) {
             newErrors.confirmPassword = 'Passwords do not match'
@@ -192,213 +149,350 @@ export default function SignupPage() {
     setErrors(newErrors)
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!validateForm()) return
+
+    try {
+      setLoading(true)
+
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          name: formData.name,
+          accountType: formData.accountType,
+          accountName: formData.accountType === 'company' ? formData.companyName : undefined,
+        }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        if (json.errors) {
+          setErrors(json.errors)
+        } else {
+          setErrors({ email: json.error || 'Signup failed' })
+        }
+        setTriggerFail((prev) => prev + 1)
+        return
+      }
+
+      setTriggerSuccess((prev) => prev + 1)
+      setIsSuccessState(true)
+
+      document.cookie = `access_token=${json.data.accessToken}; path=/; max-age=${15 * 60}; samesite=lax`
+
+      // 1.5s delay to show success animation
+      setTimeout(() => {
+        window.location.href = '/onboarding/plan'
+      }, 1500)
+    } catch (err) {
+      console.error('Signup failed:', err)
+      setErrors({ email: 'Something went wrong. Please try again.' })
+      setTriggerFail((prev) => prev + 1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAccountTypeChange = (value: 'individual' | 'company') => {
+    setFormData({ ...formData, accountType: value, companyName: '' })
+    if (errors.accountType || errors.companyName) {
+      setErrors({ ...errors, accountType: undefined, companyName: undefined })
+    }
+  }
+
+  const handleGoogleSignup = () => {
+    window.location.href = '/api/auth/google'
+  }
+
   return (
-    <Reveal>
-      <AuthCard title="Create Account" subtitle="Join FinanceFlow to manage your finances">
+    <div className="h-screen max-h-screen overflow-hidden grid lg:grid-cols-12 bg-background relative">
 
-        <Stagger>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      {/* LEFT COLUMN: Interactive Robot Stage (Desktop only, hidden on mobile) */}
+      <div className="lg:col-span-5 xl:col-span-6 relative hidden lg:flex h-full flex-col items-center justify-center p-8 bg-gradient-to-br from-secondary/25 via-background to-secondary/10 border-r border-border/30 overflow-hidden">
 
-            <StaggerItem>
-              <AccountTypeToggle
-                value={formData.accountType}
-                onChange={handleAccountTypeChange}
+        {/* Soft decorative background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] rounded-full bg-primary/10 blur-[130px] pointer-events-none" />
+
+        {/* Interactive Rive Robot Canvas */}
+        <div className="w-full max-w-[420px] aspect-square relative z-10 flex items-center justify-center">
+          <RiveRobot
+            isHandsUp={isPasswordFocused}
+            triggerFail={triggerFail}
+            triggerSuccess={triggerSuccess}
+            className="drop-shadow-2xl"
+          />
+        </div>
+
+        {/* Companion hint */}
+        <div className="relative z-10 mt-4 text-center max-w-xs">
+          <p className="text-[clamp(0.65rem,0.6vw+0.3vh,0.75rem)] font-medium text-muted-foreground">
+            New account? Bold move. Let's hope you remember the password. 🤖
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN: Signup Form with responsive text & internal scrolling */}
+      <div className="lg:col-span-7 xl:col-span-6 h-full flex flex-col justify-between p-[clamp(1rem,2vw+1vh,2.5rem)] z-10 overflow-hidden">
+
+        {/* Top bar with back button */}
+        <div className="flex items-center justify-between shrink-0 mb-1.5">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-[clamp(0.7rem,0.6vw+0.3vh,0.875rem)] text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+            <span>Back to home</span>
+          </Link>
+        </div>
+
+        {/* Center Section: Fixed Header + Internal Scrollable Form Area */}
+        <div className="mx-auto w-full max-w-sm sm:max-w-md flex flex-col flex-1 min-h-0 my-auto py-4">
+
+          {/* Header Text (Fluid typography) */}
+          <div className="flex items-start justify-between gap-3 shrink-0 mb-2 sm:mb-2.5">
+            <div>
+              <h1 className="text-[clamp(1.3rem,1.8vw+1vh,1.875rem)] font-bold text-foreground tracking-tight leading-tight">
+                Create an Account
+              </h1>
+
+              <p className="text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] text-muted-foreground mt-0.5">
+                Join FinanceFlow to manage your projects and finances.
+              </p>
+            </div>
+
+            <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none">
+              <RiveRobot
+                isHandsUp={isPasswordFocused}
+                triggerFail={triggerFail}
+                triggerSuccess={triggerSuccess}
               />
-            </StaggerItem>
+            </div>
+          </div>
 
-            {formData.accountType === 'company' && (
-              <StaggerItem>
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
+          {/* Internal Form Scroll Container */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 py-0.5">
+            <form onSubmit={handleSubmit} className="space-y-[clamp(0.55rem,1.2vh,0.85rem)]">
+              {isSuccessState && (
+                <div className="p-2 rounded-xl bg-success/15 border border-success/30 text-success text-[clamp(0.7rem,0.6vw+0.3vh,0.8125rem)] text-center font-medium animate-pulse">
+                  Account created successfully! Preparing your workspace...
+                </div>
+              )}
+
+              {/* Account Type Toggle */}
+              <div className="p-2.5 rounded-xl bg-secondary/30 border border-border/50 text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)]">
+                <AccountTypeToggle
+                  value={formData.accountType}
+                  onChange={handleAccountTypeChange}
+                />
+              </div>
+
+              {/* Company Name (Conditional) */}
+              {formData.accountType === 'company' && (
+                <div className="space-y-0.5">
+                  <Label htmlFor="companyName" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                    Company Name
+                  </Label>
                   <Input
                     id="companyName"
                     type="text"
                     placeholder="Your Company Inc."
                     value={formData.companyName}
+                    disabled={loading || isSuccessState}
                     onChange={(e) => {
                       setFormData({ ...formData, companyName: e.target.value })
-                      if (errors.companyName) {
-                        setErrors({ ...errors, companyName: undefined })
-                      }
+                      if (errors.companyName) setErrors({ ...errors, companyName: undefined })
                     }}
+                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                   />
                   {errors.companyName && (
-                    <p className="text-sm text-destructive">
-                      {errors.companyName}
-                    </p>
+                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.companyName}</p>
                   )}
                 </div>
-              </StaggerItem>
-            )}
+              )}
 
-            <StaggerItem>
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+              {/* Full Name */}
+              <div className="space-y-0.5">
+                <Label htmlFor="name" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                  Full Name
+                </Label>
                 <Input
                   id="name"
                   type="text"
                   placeholder="John Doe"
                   value={formData.name}
+                  disabled={loading || isSuccessState}
                   onChange={(e) => {
                     setFormData({ ...formData, name: e.target.value })
-                    if (errors.name) {
-                      setErrors({ ...errors, name: undefined })
-                    }
+                    if (errors.name) setErrors({ ...errors, name: undefined })
                   }}
                   onBlur={(e) => {
                     setTouched({ ...touched, name: true })
                     validateField('name', e.target.value)
                   }}
+                  className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                 />
                 {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.name}</p>
                 )}
               </div>
-            </StaggerItem>
 
-            <StaggerItem>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              {/* Email */}
+              <div className="space-y-0.5">
+                <Label htmlFor="email" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="johnwick123@gmail.com"
                   value={formData.email}
+                  disabled={loading || isSuccessState}
                   onChange={(e) => {
                     setFormData({ ...formData, email: e.target.value })
-                    if (errors.email) {
-                      setErrors({ ...errors, email: undefined })
-                    }
+                    if (errors.email) setErrors({ ...errors, email: undefined })
                   }}
                   onBlur={(e) => {
                     setTouched({ ...touched, email: true })
                     validateField('email', e.target.value)
                   }}
+                  className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.email}</p>
                 )}
               </div>
-            </StaggerItem>
 
-            <StaggerItem>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+              {/* Password */}
+              <div className="space-y-0.5">
+                <Label htmlFor="password" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder="••••••••••••"
                     value={formData.password}
-                    className="pr-10"
+                    disabled={loading || isSuccessState}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={(e) => {
+                      setIsPasswordFocused(false)
+                      setTouched({ ...touched, password: true })
+                      validateField('password', e.target.value)
+                    }}
                     onChange={(e) => {
                       setFormData({ ...formData, password: e.target.value })
                       if (errors.password) setErrors({ ...errors, password: undefined })
                     }}
-                    onBlur={(e) => {
-                      setTouched({ ...touched, password: true })
-                      validateField('password', e.target.value)
-                    }}
+                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.password}</p>
                 )}
               </div>
-            </StaggerItem>
 
-            <StaggerItem>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+              {/* Confirm Password */}
+              <div className="space-y-0.5">
+                <Label htmlFor="confirmPassword" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                  Confirm Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder="••••••••••••"
                     value={formData.confirmPassword}
-                    className="pr-10"
+                    disabled={loading || isSuccessState}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={(e) => {
+                      setIsPasswordFocused(false)
+                      setTouched({ ...touched, confirmPassword: true })
+                      validateField('confirmPassword', e.target.value)
+                    }}
                     onChange={(e) => {
                       setFormData({ ...formData, confirmPassword: e.target.value })
                       if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined })
                     }}
-                    onBlur={(e) => {
-                      setTouched({ ...touched, confirmPassword: true })
-                      validateField('confirmPassword', e.target.value)
-                    }}
+                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.confirmPassword}</p>
                 )}
               </div>
-            </StaggerItem>
 
-            <StaggerItem>
-              <Button type="submit" className="w-full">
-                Create Account
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={loading || isSuccessState}
+                className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.75rem,0.8vw+0.3vh,0.9375rem)] rounded-xl bg-foreground text-background font-semibold hover:opacity-90 active:scale-[0.99] transition-all shadow-md cursor-pointer mt-1"
+              >
+                {loading ? 'Creating Account...' : isSuccessState ? 'Created!' : 'Create Account'}
               </Button>
-            </StaggerItem>
-          </form>
+            </form>
 
-          <StaggerItem>
-            <div className="mt-4 text-center text-sm">
-              <p className="text-muted-foreground">
-                Already have an account?{' '}
-                <Link href="/login" className="text-primary hover:underline font-medium">
-                  Sign in
-                </Link>
-              </p>
+            {/* Divider */}
+            <div className="my-[clamp(0.4rem,1.2vh,0.85rem)] flex items-center gap-3">
+              <div className="h-px flex-1 bg-border/60" />
+              <span className="text-[clamp(0.65rem,0.6vw+0.3vh,0.75rem)] font-semibold tracking-wider text-muted-foreground uppercase">
+                OR
+              </span>
+              <div className="h-px flex-1 bg-border/60" />
             </div>
-          </StaggerItem>
 
-          <StaggerItem>
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or
-                </span>
-              </div>
-            </div>
-          </StaggerItem>
-
-          <StaggerItem>
+            {/* Google Signup Button */}
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={handleGoogleSignup}
-              className="
-                w-full flex items-center justify-center gap-2
-                border-border
-                bg-background
-                hover:text-foreground
-                hover:border-border cursor-pointer
-              "
+              disabled={loading || isSuccessState}
+              className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] rounded-xl border border-border/60 bg-secondary/20 hover:bg-secondary/50 text-foreground font-medium flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
             >
-              <FcGoogle className="h-5 w-5" />
-              Continue with Google
+              <FcGoogle className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span>With Google</span>
             </Button>
-          </StaggerItem>
 
-        </Stagger>
+            {/* Footer */}
+            <div className="mt-3 pb-2 text-center text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/login" className="text-primary hover:underline font-semibold ml-1">
+                Sign in
+              </Link>
+            </div>
+          </div>
+        </div>
 
-      </AuthCard>
-    </Reveal>
+        {/* Bottom copyright */}
+        <div className="text-[clamp(0.65rem,0.6vw+0.2vh,0.75rem)] text-muted-foreground/60 text-center lg:text-left shrink-0 pt-1">
+          © {new Date().getFullYear()} FinanceFlow Inc. All rights reserved.
+        </div>
+      </div>
+
+    </div>
   )
 }

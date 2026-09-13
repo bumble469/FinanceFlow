@@ -110,12 +110,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { id: planId } = await params;
     const access = await getPlanAccess(planId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    if (!access.permissions.canRequestHardware) {
+    const isOwnerDirectAdd = access.isOwner || access.role === "ADMIN";
+    if (!isOwnerDirectAdd && !access.permissions.canRequestHardware) {
       return NextResponse.json({ error: "You don't have permission to request hardware" }, { status: 403 });
-    }
-    // owners don't have a WorkItemMember row — hardware requests need a real requester id
-    if (!access.memberId) {
-      return NextResponse.json({ error: "Owners should create hardware directly via management, not a request" }, { status: 400 });
     }
 
     const body = await req.json();
@@ -156,8 +153,11 @@ export async function POST(req: NextRequest, { params }: Params) {
         notes: notes?.trim() || null,
         departmentId: departmentId || null,
         stallId: stallId || null,
-        requestStatus: "PENDING",
-        requestedById: access.memberId,
+        // Owners add hardware directly, pre-approved — no request/review workflow needed
+        // since they're already the highest authority on the plan.
+        requestStatus: isOwnerDirectAdd ? "APPROVED" : "PENDING",
+        requestedById: access.memberId ?? null,
+        reviewedAt: isOwnerDirectAdd ? new Date() : null,
         rentalStart: rentalStart ? new Date(rentalStart) : null,
         rentalEnd: rentalEnd ? new Date(rentalEnd) : null,
         monthlyRentAmount: source === "RENTED" ? Number(monthlyRentAmount) : null,
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     recipientIds.delete(user.sub); // don't notify yourself for your own request
 
-    if (recipientIds.size > 0) {
+    if (!isOwnerDirectAdd && recipientIds.size > 0) {
       await notify({
         workItemId: planId,
         userIds: Array.from(recipientIds),
@@ -184,8 +184,6 @@ export async function POST(req: NextRequest, { params }: Params) {
         entityId: item.id,
       });
     }
-
-    return NextResponse.json({ success: true, data: formatHardware(item) }, { status: 201 });
 
     return NextResponse.json({ success: true, data: formatHardware(item) }, { status: 201 });
   } catch (err) {

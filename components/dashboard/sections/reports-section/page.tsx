@@ -31,6 +31,8 @@ import { getPermissions } from "@/lib/permissions";
 import { authClient } from "@/lib/auth-client";
 import { getCurrencySymbol } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { useEditLock } from "@/hooks/use-edit-lock";
+import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -577,6 +579,11 @@ export function ReportsSection({ planId }: { planId: string }) {
   const [editingNote, setEditingNote] = useState<Doc | null>(null);
   const [noteForm, setNoteForm] = useState({ title: "", content: "" });
   const [noteSaving, setNoteSaving] = useState(false);
+  const { locked: noteLocked, lockedByName: noteLockedByName, otherEditors: noteEditors } = useEditLock(
+    "note",
+    editingNote?.id ?? null,
+    noteOpen && !!editingNote
+  );
 
   // ── upload ────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -628,7 +635,7 @@ export function ReportsSection({ planId }: { planId: string }) {
 
   // ── note submit ───────────────────────────────────────────────────────────
   async function handleNoteSubmit() {
-    if (!noteForm.title.trim()) return;
+    if (!noteForm.title.trim() || noteLocked) return;
     setNoteSaving(true);
     try {
       if (editingNote) {
@@ -954,8 +961,17 @@ export function ReportsSection({ planId }: { planId: string }) {
       <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingNote ? "Edit note" : "Add note"}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{editingNote ? "Edit note" : "Add note"}</DialogTitle>
+              <EditingPresenceIndicator editors={noteEditors} />
+            </div>
           </DialogHeader>
+
+          {noteLocked && (
+            <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+              Currently being edited by {noteLockedByName}.
+            </div>
+          )}
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label>Title</Label>
@@ -979,7 +995,7 @@ export function ReportsSection({ planId }: { planId: string }) {
               <Button variant="outline" className="cursor-pointer" onClick={() => { setNoteOpen(false); setEditingNote(null); }} disabled={noteSaving}>
                 Cancel
               </Button>
-              <Button className="cursor-pointer" onClick={handleNoteSubmit} disabled={noteSaving}>
+              <Button className="cursor-pointer" onClick={handleNoteSubmit} disabled={noteSaving || noteLocked}>
                 {noteSaving ? "Saving..." : editingNote ? "Update note" : "Add note"}
               </Button>
             </div>

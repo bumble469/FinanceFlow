@@ -186,8 +186,8 @@ export function RequestHardwareDialog({ open, onOpenChange, departments, stalls,
 
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={loading}>{loading ? "Submitting..." : "Submit request"}</Button>
+            <Button className="cursor-pointer hover:text-gray-600" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
+            <Button className="cursor-pointer" onClick={handleSubmit} disabled={loading}>{loading ? "Submitting..." : "Submit request"}</Button>
           </div>
         </div>
       </DialogContent>
