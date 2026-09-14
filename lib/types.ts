@@ -44,6 +44,7 @@ export interface Plan {
   project: any;
   event: any;
   expenses: Expense[];
+  income: Income[];
   eventData?: EventData;
   simulation: SimulationModifiers;
   currency: string;
@@ -79,6 +80,13 @@ type DepartmentMember = {
   };
 };
 
+export type ConnectionStatus =
+  | "NONE"
+  | "SELF"
+  | "ACCEPTED"
+  | "PENDING_SENT"
+  | "PENDING_RECEIVED";
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -89,6 +97,7 @@ export interface TeamMember {
   permissions?: Record<string, any> | null;
   monthlyCost: number;
   departmentCostShares?: Record<string, number>;
+  connectionStatus?: ConnectionStatus;
 }
 
 export type ExpenseStatus =

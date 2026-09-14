@@ -28,6 +28,8 @@ export async function GET() {
             planInfo: true,
             departments: true,
             phases: true,
+            expenses: true,
+            income: true,
           },
         },
       },
@@ -36,13 +38,28 @@ export async function GET() {
       },
     });
 
+    const castWorkItem = (workItem: any) => ({
+      ...workItem,
+      budget: workItem.budget !== null ? Number(workItem.budget) : null,
+      expenses: (workItem.expenses ?? []).map((e: any) => ({
+        ...e,
+        amount: Number(e.amount),
+        paidAmount: Number(e.paidAmount),
+      })),
+      income: (workItem.income ?? []).map((i: any) => ({
+        ...i,
+        amount: i.amount !== null ? Number(i.amount) : null,
+        receivedAmount: Number(i.receivedAmount),
+      })),
+    });
+
     const myPlans = memberships
       .filter((membership) => membership.role === "ADMIN")
-      .map((membership) => membership.workItem);
+      .map((membership) => castWorkItem(membership.workItem));
 
     const collaborations = memberships
       .filter((membership) => membership.role !== "ADMIN")
-      .map((membership) => membership.workItem);
+      .map((membership) => castWorkItem(membership.workItem));
 
     const invitations = await prisma.workItemMemberInvitation.findMany({
       where: {

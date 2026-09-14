@@ -87,10 +87,44 @@ export async function GET(
       };
     }).filter((r) => r.count > 0);
 
-    const formattedMembers = members.map((m) => ({
-      ...m,
-      monthlyCost: toNum(m),
-    }));
+    // --- CONNECTION STATUS LOGIC ---
+    const memberUserIds = members.map((m) => m.userId);
+
+    const connections = await prisma.connection.findMany({
+      where: {
+        OR: [
+          { user1Id: user.sub, user2Id: { in: memberUserIds } },
+          { user2Id: user.sub, user1Id: { in: memberUserIds } }
+        ]
+      }
+    });
+
+    const connectionMap = new Map();
+    connections.forEach((conn) => {
+      const otherId = conn.user1Id === user.sub ? conn.user2Id : conn.user1Id;
+      connectionMap.set(otherId, conn);
+    });
+
+    const formattedMembers = members.map((m) => {
+      const conn = connectionMap.get(m.userId);
+      let connectionStatus = "NONE";
+
+      if (m.userId === user.sub) {
+        connectionStatus = "SELF";
+      } else if (conn) {
+        if (conn.status === "ACCEPTED") {
+          connectionStatus = "ACCEPTED";
+        } else if (conn.status === "PENDING") {
+          connectionStatus = conn.requesterId === user.sub ? "PENDING_SENT" : "PENDING_RECEIVED";
+        }
+      }
+
+      return {
+        ...m,
+        monthlyCost: toNum(m),
+        connectionStatus,
+      };
+    });
 
     return NextResponse.json({
       data: formattedMembers,
@@ -162,6 +196,35 @@ export async function POST(
         monthlyCost
       },
     });
+
+    // --- AUTO-CONNECT LOGIC ---
+    const addedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { autoConnectWithCoworkers: true }
+    });
+
+    if (addedUser?.autoConnectWithCoworkers) {
+      const otherMembers = await prisma.workItemMember.findMany({
+        where: {
+          workItemId: planId,
+          userId: { not: userId },
+          user: { autoConnectWithCoworkers: true }
+        },
+        select: { userId: true }
+      });
+
+      if (otherMembers.length > 0) {
+        const connectionsToCreate = otherMembers.map((member) => {
+          const [u1, u2] = [userId, member.userId].sort();
+          return { user1Id: u1, user2Id: u2 };
+        });
+
+        await prisma.connection.createMany({
+          data: connectionsToCreate,
+          skipDuplicates: true
+        });
+      }
+    }
 
     // 2. Create DepartmentMember entries (if any)
     if (departmentIds.length > 0) {

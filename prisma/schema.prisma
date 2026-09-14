@@ -147,6 +147,8 @@ enum NotificationType {
   HARDWARE_DECLINED
   HARDWARE_DEPOSIT_REFUNDED
   HARDWARE_CONDITION_UPDATED
+  CONNECTION_REQUEST
+  CONNECTION_REQUEST_ACCEPTED
 }
 
 enum ExtensionTargetType {
@@ -258,6 +260,7 @@ model User {
 
   emailNotificationsEnabled Boolean                @default(true)
   emailNotificationScope    EmailNotificationScope  @default(ALL)
+  autoConnectWithCoworkers  Boolean                 @default(true)
 
   account             Account?
   oauthAccount        OAuthAccount?
@@ -271,6 +274,10 @@ model User {
   notifications Notification[]
   emailNotificationPlans UserEmailNotificationPlan[]
   stallMembers StallMember[]
+
+  initiatedConnections Connection[] @relation("ConnectionsInitiated")
+  receivedConnections  Connection[] @relation("ConnectionsReceived")
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -912,20 +919,21 @@ model WorkItemDocument {
 }
 
 model Notification {
-  id         String            @id @default(uuid())
-  workItemId String
-  userId     String
-  scope      NotificationScope
-  type       NotificationType
-  title      String
-  message    String
-  entityType String?
-  entityId   String?
-  isRead     Boolean           @default(false)
-  createdAt  DateTime          @default(now())
+  id           String            @id @default(uuid())
+  workItemId   String?           // <--- MAKE THIS OPTIONAL (add '?')
+  userId       String
+  scope        NotificationScope
+  type         NotificationType
+  title        String
+  message      String
+  entityType   String?
+  entityId     String?
+  isRead       Boolean           @default(false)
+  createdAt    DateTime          @default(now())
 
-  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Update the relation to be optional as well
+  workItem     WorkItem?         @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([workItemId, userId, isRead])
   @@map("notifications")
@@ -1271,3 +1279,20 @@ model SubscriptionPayment {
 
   @@map("subscription_payments")
 }
+
+model Connection {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  user1Id   String
+  user1     User     @relation("ConnectionsInitiated", fields: [user1Id], references: [id], onDelete: Cascade)
+  
+  user2Id   String
+  user2     User     @relation("ConnectionsReceived", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  status      String   @default("ACCEPTED") // Can be "ACCEPTED" (for auto-connect) or "PENDING"
+  requesterId String?  // The ID of the user who clicked the "Connect" button
+
+  @@unique([user1Id, user2Id])
+}
+

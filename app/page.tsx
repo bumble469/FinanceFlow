@@ -14,35 +14,47 @@ import { CTASection } from "@/components/landing/cta-section";
 import { LandingFooter } from "@/components/landing/footer";
 import { VantaBackground } from "@/components/landing/vanta-background";
 import { useFinancialStore } from '@/lib/store';
+import { Loader } from '@/components/shared/loader';
+
+type AuthState = 'checking' | 'authed' | 'guest';
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const currentUser = useFinancialStore((s) => s.currentUser);
   const setCurrentUser = useFinancialStore((s) => s.setCurrentUser);
+  const [authState, setAuthState] = useState<AuthState>(currentUser ? 'authed' : 'checking');
 
   useEffect(() => {
+    if(currentUser){
+      setAuthState('authed');
+      return;
+    }
+    let cancelled = false;
     async function checkAuth() {
       try {
         const res = await authClient.request('/api/auth/me');
-
         const user = res.data?.data;
+        if (cancelled) false;
         if (user) {
           authClient.setUser(user);
           setCurrentUser(user);
-          setIsAuthenticated(true);
+          setAuthState('authed');
         } else {
-          setIsAuthenticated(false);
+          setAuthState('guest');
         }
       } catch (err) {
-        setIsAuthenticated(false);
+        if (!cancelled) setAuthState('guest');
       }
     }
-
     checkAuth();
   }, []);
 
+  if (authState === 'checking') {
+    return <Loader/>;
+  }
+
   return (
     <>
-      {isAuthenticated ? (
+      {authState === 'authed' ? (
         <AppShell>
           <OverviewPage />
         </AppShell>

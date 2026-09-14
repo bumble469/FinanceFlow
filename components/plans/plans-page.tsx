@@ -35,7 +35,8 @@ function mapWorkItemToPlan(workItem: any): Plan {
     teamMembers: [],
     project: workItem.project ?? null,
     event: workItem.event ?? null,
-    expenses: [],
+    expenses: workItem.expenses ?? [],
+    income: workItem.income ?? [],
     eventData: undefined,
     simulation: {
       costMultiplier: 1,
