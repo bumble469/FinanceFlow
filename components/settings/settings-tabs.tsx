@@ -8,6 +8,9 @@ import { LogoutSection } from "@/components/settings/logout-section";
 import { authClient } from "@/lib/auth-client";
 import type { AccountSubscription } from "@/lib/types";
 import Link from "next/link";
+import { useFinancialStore } from "@/lib/store";
+import { Switch } from "@/components/ui/switch";
+
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -29,6 +32,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 export function SettingsTabs() {
   const [subscription, setSubscription] = useState<AccountSubscription | null>(null);
   const [loadingSub, setLoadingSub] = useState(true);
+  const { autoConnectWithCoworkers, setAutoConnectWithCoworkers } = useFinancialStore();
 
   useEffect(() => {
     authClient.request("/api/subscription")
@@ -36,6 +40,19 @@ export function SettingsTabs() {
       .catch((err) => console.error("Failed to fetch subscription:", err))
       .finally(() => setLoadingSub(false));
   }, []);
+
+  const handleToggleAutoConnect = async (checked: boolean) => {
+    setAutoConnectWithCoworkers(checked);
+    try {
+      await authClient.request("/api/settings/connections", {
+        method: "PATCH",
+        data: JSON.stringify({ autoConnectWithCoworkers: checked }),
+      });
+    } catch (error) {
+      console.error("Failed to update auto connect preference", error);
+      setAutoConnectWithCoworkers(!checked);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,6 +68,7 @@ export function SettingsTabs() {
               <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
               <TabsTrigger value="account" className="cursor-pointer">Account</TabsTrigger>
               <TabsTrigger value="subscription" className="cursor-pointer">Subscription</TabsTrigger>
+              <TabsTrigger value="connections" className="cursor-pointer">Connections</TabsTrigger>
             </TabsList>
 
             {/* GENERAL TAB */}
@@ -163,6 +181,21 @@ export function SettingsTabs() {
                   </div>
                 )}
               </Card>
+            </TabsContent>
+            <TabsContent value="connections" className="space-y-6">
+              <div className="flex items-center justify-between py-4 border-y border-border mb-4">
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">Auto-connect with Coworkers</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically connect with people added to your plans and work items.
+                  </p>
+                </div>
+                <Switch
+                  className="cursor-pointer"
+                  checked={autoConnectWithCoworkers}
+                  onCheckedChange={handleToggleAutoConnect}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
