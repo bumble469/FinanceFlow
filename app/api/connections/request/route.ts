@@ -99,13 +99,20 @@ export async function DELETE(req: NextRequest) {
             where: { user1Id_user2Id: { user1Id: u1, user2Id: u2 } }
         });
 
-        if (!existing || existing.status !== "PENDING") {
-            return NextResponse.json({ error: "No pending request found" }, { status: 404 });
+        if (!existing) {
+            return NextResponse.json({ error: "Connection not found" }, { status: 404 });
         }
 
-        // Only the recipient or the sender can delete the request
-        if (existing.requesterId !== user.sub && existing.requesterId !== targetUserId) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (existing.status === "PENDING") {
+            // Only the requester (withdraw) or the recipient (reject) can delete
+            if (existing.requesterId !== user.sub && existing.requesterId !== targetUserId) {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+        } else if (existing.status === "ACCEPTED") {
+            // Either party in an accepted connection can remove it
+            if (existing.user1Id !== user.sub && existing.user2Id !== user.sub) {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
         }
 
         await prisma.connection.delete({ where: { id: existing.id } });

@@ -35,7 +35,7 @@ export function DashboardLayout({ planId }: DashboardLayoutProps) {
 
   if (!currentPlanMeta || currentPlanMeta.id !== planId) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader label="Loading plan..." />
       </div>
     );

@@ -88,8 +88,8 @@ export default function PlanDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader label="Loading plan..." />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader label="Loading plan..."/>
       </div>
     );
   }

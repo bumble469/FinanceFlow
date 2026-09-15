@@ -24,7 +24,7 @@ export default function Home() {
   const [authState, setAuthState] = useState<AuthState>(currentUser ? 'authed' : 'checking');
 
   useEffect(() => {
-    if(currentUser){
+    if (currentUser) {
       setAuthState('authed');
       return;
     }
@@ -49,7 +49,11 @@ export default function Home() {
   }, []);
 
   if (authState === 'checking') {
-    return <Loader/>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader />
+      </div>
+    );
   }
 
   return (

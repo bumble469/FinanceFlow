@@ -148,8 +148,8 @@ export function PlansPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader label="Loading plans..." />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader label="Loading plans..."/>
       </div>
     );
   }

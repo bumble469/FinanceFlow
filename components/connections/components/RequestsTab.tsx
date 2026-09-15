@@ -72,12 +72,9 @@ export function RequestsTab() {
   }
 
   return (
-    <Card className="border border-border/50 bg-card/60 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-sm flex flex-col min-h-[400px]">
+    <Card className="border border-border/50 bg-card/60 backdrop-blur-sm p-4 md:p-4 rounded-2xl shadow-sm flex flex-col min-h-[400px]">
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/40">
         <div>
-          <h2 className="text-lg font-semibold text-foreground tracking-tight">
-            Pending Invitations
-          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Manage incoming network connection requests from other users.
           </p>

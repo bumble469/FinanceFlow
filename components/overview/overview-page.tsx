@@ -82,7 +82,11 @@ export function OverviewPage() {
   const currency = allActivePlans[0]?.currency || "₹";
 
   if (isLoading) {
-    return <div className="flex h-64 items-center justify-center"><Loader label="Loading dashboard..." /></div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader label="Loading plan..." />
+      </div>
+    )
   }
 
   return (

@@ -274,6 +274,7 @@ model User {
   notifications Notification[]
   emailNotificationPlans UserEmailNotificationPlan[]
   stallMembers StallMember[]
+  sentMessages Message[]
 
   initiatedConnections Connection[] @relation("ConnectionsInitiated")
   receivedConnections  Connection[] @relation("ConnectionsReceived")
@@ -378,6 +379,7 @@ model WorkItem {
   ticketTypes TicketType[]     
   ticketBookings TicketBooking[]
   hardwareItems HardwareItem[]
+  conversations Conversation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1292,7 +1294,41 @@ model Connection {
 
   status      String   @default("ACCEPTED") // Can be "ACCEPTED" (for auto-connect) or "PENDING"
   requesterId String?  // The ID of the user who clicked the "Connect" button
+  conversation Conversation?
 
   @@unique([user1Id, user2Id])
 }
 
+model Conversation {
+  id           String   @id @default(cuid())
+  connectionId String   @unique
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  activeWorkItemId String?
+  activeWorkItem   WorkItem? @relation(fields: [activeWorkItemId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  body String
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
