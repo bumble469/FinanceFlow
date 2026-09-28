@@ -13,13 +13,12 @@ import { EmptyChatState } from "@/components/connections/components/empty-chat-s
 import { GroupsTab } from "@/components/connections/components/GroupsTab";
 import { RequestsTab } from "@/components/connections/components/RequestsTab";
 import { getSocket } from "@/lib/socket-client";
-import { connection } from "next/server";
 
 interface ConnectionItem {
   connectionId: string;
   user: { id: string; name: string | null; email: string; image?: string | null };
   connectedAt: string;
-  unreadCount?: number; // 1. Added unreadCount to the interface
+  unreadCount?: number;
 }
 interface Pagination {
   page: number;
@@ -83,7 +82,7 @@ export function ConnectionsPage() {
         ...prev,
         [payload.connectionId]: payload.isTyping,
       }));
-      console.log("typing event received: "+ payload.connectionId + payload.isTyping)
+      console.log("typing event received: " + payload.connectionId + payload.isTyping)
     };
 
     socket.on("chat:new-message", handleNewMessage);

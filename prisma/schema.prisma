@@ -380,6 +380,7 @@ model WorkItem {
   ticketBookings TicketBooking[]
   hardwareItems HardwareItem[]
   conversations Conversation[]
+  messages Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1325,10 +1326,18 @@ model Message {
 
   body String
 
+  workItemId String?
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  entityType String?
+  entityId   String?
+
   readAt DateTime?
 
   createdAt DateTime @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, workItemId])
+  @@index([entityType, entityId])
   @@map("messages")
 }

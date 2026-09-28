@@ -22,12 +22,15 @@ import { NotificationBell } from "./components/notification-bell";
 
 interface DashboardLayoutProps {
   planId: string;
+  initialSection?: string;
 }
 
-export function DashboardLayout({ planId }: DashboardLayoutProps) {
+export function DashboardLayout({ planId, initialSection }: DashboardLayoutProps) {
   const router = useRouter();
   const { currentPlanMeta } = useFinancialStore();
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(
+    initialSection && navItems.some((n) => n.id === initialSection) ? initialSection : "overview"
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const permissions = getPermissions(currentPlanMeta);

@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useFinancialStore } from "@/lib/store";
 import { authClient } from "@/lib/auth-client";
@@ -11,6 +11,8 @@ import { Loader } from "@/components/shared/loader";
 export default function PlanDashboardPage() {
   const params = useParams();
   const planId = params.planId as string;
+  const searchParams = useSearchParams();
+  const initialSection = searchParams.get("section") ?? undefined;
   const { setCurrentPlanId, setCurrentPlanMeta, setPlanMeta, setIncome, setExpenses } = useFinancialStore();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -102,5 +104,5 @@ export default function PlanDashboardPage() {
     );
   }
 
-  return <DashboardLayout planId={planId} />;
+  return <DashboardLayout planId={planId} initialSection={initialSection} />;
 }

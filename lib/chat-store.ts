@@ -1,17 +1,37 @@
 import { create } from "zustand";
+import type { ChatEntity } from "@/lib/chat-types";
 
-interface Message {
+export interface Message {
   id: string;
   body: string;
   senderId: string;
   createdAt: string;
   readAt: string | null;
+  workItemId?: string | null;
+  workItem?: { id: string; name: string } | null;
+  entityType?: string | null;
+  entityId?: string | null;
+  entity?: ChatEntity | null;
   sender: { id: string; name: string | null; image: string | null };
+}
+
+export interface SharedWorkItem {
+  id: string;
+  name: string;
+  type: "PROJECT" | "EVENT" | "PLAN";
+  status: string;
+}
+
+export interface ConversationContext {
+  activeWorkItemId: string | null;
+  sharedWorkItems: SharedWorkItem[];
 }
 
 interface ChatState {
   conversationIdByConnection: Record<string, string>;
   messagesByConversation: Record<string, Message[]>;
+  contextByConversation: Record<string, ConversationContext>;
+  setContext: (conversationId: string, ctx: ConversationContext) => void;
 
   getCachedConversationId: (connectionId: string) => string | undefined;
   getCachedMessages: (conversationId: string) => Message[] | undefined;
@@ -26,6 +46,10 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   conversationIdByConnection: {},
   messagesByConversation: {},
+  contextByConversation: {},
+
+  setContext: (conversationId, ctx) =>
+    set((s) => ({ contextByConversation: { ...s.contextByConversation, [conversationId]: ctx } })),
 
   getCachedConversationId: (connectionId) => get().conversationIdByConnection[connectionId],
   getCachedMessages: (conversationId) => get().messagesByConversation[conversationId],
@@ -57,5 +81,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
-  clear: () => set({ conversationIdByConnection: {}, messagesByConversation: {} }),
+    clear: () => set({ conversationIdByConnection: {}, messagesByConversation: {}, contextByConversation: {} }),
 }));
