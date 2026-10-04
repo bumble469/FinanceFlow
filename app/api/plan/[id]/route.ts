@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 
 // ─── SHARED INCLUDE ────────────────────────────────────────────────────────
-
 const planInclude = {
   project: true,
   event: true,
@@ -53,6 +52,7 @@ const planInclude = {
   },
   income: true,
   expenses: true,
+  group: true,
 };
 
 // ─── FORMAT PLAN ───────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ success: false, error: 'Plan not found' }, { status: 404 });
 
     const body = await request.json();
-    const { name, status, budget, description, currency, startDate, endDate, methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, allowMultipleEditing } = body;
+    const { name, status, budget, description, currency, startDate, endDate, methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, allowMultipleEditing, allowConnectionsGroup } = body;
 
     if (status && !Object.values(WorkItemStatus).includes(status)) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
@@ -192,6 +192,7 @@ export async function PATCH(
           ...(currency ? { currency } : {}),
           ...(hasHardware !== undefined ? { hasHardware: !!hasHardware } : {}),
           ...(allowMultipleEditing !== undefined ? { allowMultipleEditing: !!allowMultipleEditing } : {}),
+          ...(allowConnectionsGroup !== undefined ? { allowConnectionsGroup: !!allowConnectionsGroup } : {}),
         },
       });
 
@@ -216,9 +217,21 @@ export async function PATCH(
         });
       }
 
+      if (allowConnectionsGroup === true) {
+        await tx.group.upsert({
+          where: { workItemId: planId },
+          create: { workItemId: planId },
+          update: {}
+        });
+      } else if (allowConnectionsGroup === false) {
+        await tx.group.deleteMany({
+          where: { workItemId: planId }
+        });
+      }
+
       return tx.workItem.findUnique({
         where: { id: planId },
-        include: { project: true, event: true, planInfo: true, departments: true, phases: true },
+        include: { project: true, event: true, planInfo: true, departments: true, phases: true, group: true },
       });
     });
 

@@ -125,14 +125,7 @@ export function ConnectionsPage() {
   }, [searchInput]);
 
   if (tab === "groups") {
-    return (
-      <div className="flex flex-col h-full min-h-0">
-        <TabSelector active={tab} onChange={setTab} />
-        <div className="flex-1 overflow-y-auto min-h-0 p-4">
-          <GroupsTab />
-        </div>
-      </div>
-    );
+    return <GroupsTab tab={tab} onTabChange={setTab} />;
   }
 
   if (tab === "requests") {

@@ -51,6 +51,7 @@ export interface Plan {
   description: string;
   mode: "project" | "event";
   hasHardware?: boolean;
+  allowConnectionsGroup?: boolean;
 }
 
 // ============================================================
