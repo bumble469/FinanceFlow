@@ -63,6 +63,7 @@ export function CreatePlanDialog({
   const [hasStalls, setHasStalls] = useState(false);
   const [hasHardware, setHasHardware] = useState(false);
   const [allowConnectionsGroup, setAllowConnectionsGroup] = useState(true);
+  const [financeEnabled, setFinanceEnabled] = useState(true);
 
   // project-specific
   const [startDate, setStartDate] = useState("");
@@ -80,12 +81,13 @@ export function CreatePlanDialog({
     if (initialData) {
       setName(initialData.name);
       setType(initialData.type);
-      setBudget(String(initialData.budget));
+      setBudget(initialData.budget != null ? String(initialData.budget) : "");
       setDescription(initialData.description || "");
       setCurrency(initialData.currency);
       setIsActive(initialData.status === "active");
       setHasHardware(!!initialData.hasHardware);
       setAllowConnectionsGroup(initialData.allowConnectionsGroup ?? true);
+      setFinanceEnabled(initialData.financeEnabled ?? true);
 
       if (initialData.project) {
         setStartDate(initialData.project.startDate?.split("T")[0] ?? "");
@@ -115,6 +117,7 @@ export function CreatePlanDialog({
       setHasStalls(false);
       setHasHardware(false);
       setAllowConnectionsGroup(true);
+      setFinanceEnabled(true);
     }
   }, [initialData, open]);
 
@@ -123,7 +126,8 @@ export function CreatePlanDialog({
     setError(null);
 
     const budgetAmount = parseFloat(budget);
-    if (!name.trim() || !budget.trim() || budgetAmount <= 0) return;
+    if (!name.trim()) return;
+    if (financeEnabled && (!budget.trim() || !(budgetAmount > 0))) return;
 
     setIsLoading(true);
 
@@ -136,12 +140,12 @@ export function CreatePlanDialog({
         data: {
           name: name.trim(),
           type: type.toUpperCase(),
-          budget: budgetAmount,
           description: description.trim(),
-          currency,
           status: isActive ? "ACTIVE" : "INACTIVE",
           hasHardware,
           allowConnectionsGroup,
+          financeEnabled,
+          ...(financeEnabled && { budget: budgetAmount, currency }),
           // type-specific
           ...(type === "project" && {
             startDate: startDate || undefined,
@@ -183,7 +187,7 @@ export function CreatePlanDialog({
           <DialogDescription>
             {isEditMode
               ? "Update your plan details"
-              : "Set up a new project or event to track finances"}
+              : "Set up a new project or event"}
           </DialogDescription>
         </DialogHeader>
 
@@ -364,33 +368,60 @@ export function CreatePlanDialog({
             </div>
           )}
 
-          {/* BUDGET */}
-          <div className="space-y-2">
-            <Label>Budget</Label>
-            <Input
-              type="number"
-              placeholder="50000"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              disabled={isLoading}
-              min="1"
-            />
+          {/* FINANCE TOGGLE */}
+          <div className="flex flex-col gap-2 rounded-lg border border-border px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Finance mode</Label>
+                <p className="text-xs text-muted-foreground">
+                  Budget, income, expenses and financial insights
+                </p>
+              </div>
+              <Switch
+                className="cursor-pointer"
+                checked={financeEnabled}
+                onCheckedChange={setFinanceEnabled}
+                disabled={isLoading}
+              />
+            </div>
+            {isEditMode && initialData?.financeEnabled !== false && !financeEnabled && (
+              <p className="text-xs text-muted-foreground">
+                Finance data is hidden, not deleted. Turn it back on anytime.
+              </p>
+            )}
           </div>
 
-          {/* CURRENCY */}
-          <div className="space-y-2">
-            <Label>Currency</Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="USD">USD ($)</SelectItem>
-                <SelectItem value="INR">INR (₹)</SelectItem>
-                <SelectItem value="EUR">EUR (€)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {financeEnabled && (
+            <>
+              {/* BUDGET */}
+              <div className="space-y-2">
+                <Label>Budget</Label>
+                <Input
+                  type="number"
+                  placeholder="50000"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  disabled={isLoading}
+                  min="1"
+                />
+              </div>
+
+              {/* CURRENCY */}
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="INR">INR (₹)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
                     <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
             <div>
@@ -474,7 +505,7 @@ export function CreatePlanDialog({
               disabled={
                 isLoading ||
                 !name.trim() ||
-                !budget.trim() ||
+                (financeEnabled && !budget.trim()) ||
                 (!isEditMode && type === "project" && atProjectLimit) ||
                 (!isEditMode && type === "event" && atEventLimit)
               }

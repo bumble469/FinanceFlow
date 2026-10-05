@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       name, type, budget, description, status, currency,
       startDate, endDate, methodology,
       eventDate, venue, hasTicketing, hasStalls, hasHardware,
-      allowConnectionsGroup
+      allowConnectionsGroup, financeEnabled
     } = body;
 
     if (!name?.trim()) {
@@ -183,7 +183,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!budget || isNaN(budget) || budget <= 0) {
+    const financeOn = financeEnabled !== false;
+    if (financeOn && (!budget || isNaN(budget) || budget <= 0)) {
       return NextResponse.json({ success: false, error: 'Budget must be a positive number' }, { status: 400 });
     }
     
@@ -193,7 +194,9 @@ export async function POST(request: NextRequest) {
         data: {
           name: name.trim(),
           type,
-          budget,
+          budget: financeOn ? budget : null,
+          ...(financeOn && currency ? { currency } : {}),
+          financeEnabled: financeOn,
           description,
           status: status || "ACTIVE",
           currency,

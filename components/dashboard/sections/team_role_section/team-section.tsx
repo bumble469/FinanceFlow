@@ -124,6 +124,8 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
     currentPlanMeta
   } = useFinancialStore();
 
+  const financeOn = currentPlanMeta?.financeEnabled !== false;
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
@@ -383,7 +385,7 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
       </div>
 
       {/* Statistical cards — everything (totals, cost by dept, cost by role) lives up here now */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${financeOn ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -396,22 +398,24 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-              <DollarSign className="h-5 w-5 text-success" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Monthly Cost</p>
-              <p className="text-xl font-bold text-success">
-                {formatCurrency(stats.totalMonthlyCost, currency)}
-              </p>
+        {financeOn && (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                <DollarSign className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Monthly Cost</p>
+                <p className="text-xl font-bold text-success">
+                  {formatCurrency(stats.totalMonthlyCost, currency)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Cost by department — dropdown selector */}
-        <div className="rounded-xl border border-border bg-card p-5">
+        {financeOn && <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">Cost by Department</p>
             {activeDepartments.length > 0 ? (
@@ -442,7 +446,7 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Members by role — dropdown selector */}
         <div className="rounded-xl border border-border bg-card p-5">
@@ -465,9 +469,11 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{selectedRoleStat?.count ?? 0}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatCurrency(selectedRoleStat?.cost, currency)}/mo
-              </p>
+              {financeOn && (
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(selectedRoleStat?.cost, currency)}/mo
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -495,7 +501,7 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Departments</TableHead>
-                <TableHead className="text-right">Monthly Cost</TableHead>
+                {financeOn && <TableHead className="text-right">Monthly Cost</TableHead>}
                 {showActionsColumn && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
@@ -503,13 +509,13 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={showActionsColumn ? 5 : 4} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={(showActionsColumn ? 1 : 0) + (financeOn ? 1 : 0) + 3} className="text-center text-sm text-muted-foreground py-8">
                     Loading members...
                   </TableCell>
                 </TableRow>
               ) : teamMembers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showActionsColumn ? 5 : 4} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={(showActionsColumn ? 1 : 0) + (financeOn ? 1 : 0) + 3} className="text-center text-sm text-muted-foreground py-8">
                     {search ? "No members match your search." : "No members yet."}
                   </TableCell>
                 </TableRow>
@@ -549,9 +555,11 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                         </div>
                       </TableCell>
 
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(member.monthlyCost || 0, currency)}
-                      </TableCell>
+                      {financeOn && (
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(member.monthlyCost || 0, currency)}
+                        </TableCell>
+                      )}
 
                       {showActionsColumn && (
                         <TableCell>
@@ -562,10 +570,10 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                                 variant="ghost"
                                 onClick={() => handleEdit(member)}
                                 className="relative cursor-pointer"
-                                title={canSeeSetupBadges && isMissingSetup(member) ? "Missing monthly cost or department" : undefined}
+                                title={financeOn && canSeeSetupBadges && isMissingSetup(member) ? "Missing monthly cost or department" : undefined}
                               >
                                 <Pencil className="h-4 w-4" />
-                                {canSeeSetupBadges && isMissingSetup(member) && (
+                                {financeOn && canSeeSetupBadges && isMissingSetup(member) && (
                                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-500 text-[9px] font-bold text-white">
                                     !
                                   </span>

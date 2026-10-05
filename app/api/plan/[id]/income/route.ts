@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { deriveIncomeStatus } from "@/lib/financial-status";
 import { notify, getPlanAdminUserIds } from "@/lib/notify";
+import { assertFinanceEnabled } from "@/lib/finance-guard";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -72,6 +73,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: planId } = await params;
+    
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
 
     const access = await resolveAccess(planId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -101,6 +105,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: planId } = await params;
+    
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
 
     const access = await resolveAccess(planId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
