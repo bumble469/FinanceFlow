@@ -147,6 +147,8 @@ enum NotificationType {
   HARDWARE_DECLINED
   HARDWARE_DEPOSIT_REFUNDED
   HARDWARE_CONDITION_UPDATED
+  CONNECTION_REQUEST
+  CONNECTION_REQUEST_ACCEPTED
 }
 
 enum ExtensionTargetType {
@@ -258,6 +260,7 @@ model User {
 
   emailNotificationsEnabled Boolean                @default(true)
   emailNotificationScope    EmailNotificationScope  @default(ALL)
+  autoConnectWithCoworkers  Boolean                 @default(true)
 
   account             Account?
   oauthAccount        OAuthAccount?
@@ -271,6 +274,12 @@ model User {
   notifications Notification[]
   emailNotificationPlans UserEmailNotificationPlan[]
   stallMembers StallMember[]
+  sentMessages Message[]
+  groupReads   GroupRead[]
+
+  initiatedConnections Connection[] @relation("ConnectionsInitiated")
+  receivedConnections  Connection[] @relation("ConnectionsReceived")
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -351,6 +360,7 @@ model WorkItem {
   planInfo PlanInfo?
   hasHardware Boolean @default(false)
   allowMultipleEditing Boolean @default(true)
+  allowConnectionsGroup Boolean @default(true)
 
   members WorkItemMember[]
   invitations WorkItemMemberInvitation[]
@@ -371,6 +381,10 @@ model WorkItem {
   ticketTypes TicketType[]     
   ticketBookings TicketBooking[]
   hardwareItems HardwareItem[]
+  conversations Conversation[]
+  messages Message[]
+  group Group?
+  groupReads GroupRead[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -912,20 +926,21 @@ model WorkItemDocument {
 }
 
 model Notification {
-  id         String            @id @default(uuid())
-  workItemId String
-  userId     String
-  scope      NotificationScope
-  type       NotificationType
-  title      String
-  message    String
-  entityType String?
-  entityId   String?
-  isRead     Boolean           @default(false)
-  createdAt  DateTime          @default(now())
+  id           String            @id @default(uuid())
+  workItemId   String?           // <--- MAKE THIS OPTIONAL (add '?')
+  userId       String
+  scope        NotificationScope
+  type         NotificationType
+  title        String
+  message      String
+  entityType   String?
+  entityId     String?
+  isRead       Boolean           @default(false)
+  createdAt    DateTime          @default(now())
 
-  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Update the relation to be optional as well
+  workItem     WorkItem?         @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([workItemId, userId, isRead])
   @@map("notifications")
@@ -1270,4 +1285,87 @@ model SubscriptionPayment {
   @@index([status])
 
   @@map("subscription_payments")
+}
+
+model Connection {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  user1Id   String
+  user1     User     @relation("ConnectionsInitiated", fields: [user1Id], references: [id], onDelete: Cascade)
+  
+  user2Id   String
+  user2     User     @relation("ConnectionsReceived", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  status      String   @default("ACCEPTED") // Can be "ACCEPTED" (for auto-connect) or "PENDING"
+  requesterId String?  // The ID of the user who clicked the "Connect" button
+  conversation Conversation?
+
+  @@unique([user1Id, user2Id])
+}
+
+model Group {
+  workItemId String   @id
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  messages Message[]
+  @@map("groups")
+}
+
+model GroupRead {
+  workItemId String
+  userId     String
+  lastReadAt DateTime @default(now())
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workItemId, userId])
+  @@map("group_reads")
+}
+
+model Conversation {
+  id           String   @id @default(cuid())
+  connectionId String   @unique
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  activeWorkItemId String?
+  activeWorkItem   WorkItem? @relation(fields: [activeWorkItemId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [workItemId], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  body String
+
+  workItemId String?
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  entityType String?
+  entityId   String?
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, workItemId])
+  @@index([groupId, createdAt])
+  @@index([entityType, entityId])
+  @@map("messages")
 }

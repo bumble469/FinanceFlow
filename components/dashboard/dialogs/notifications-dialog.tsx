@@ -15,6 +15,7 @@ import type { NotificationItem } from "@/hooks/use-notifications";
 interface NotificationsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  contextLabel?: string; // e.g. "System" or "Plan"
   general: NotificationItem[];
   personal: NotificationItem[];
   unreadGeneral: number;
@@ -76,6 +77,7 @@ function NotificationList({
 export function NotificationsDialog({
   open,
   onOpenChange,
+  contextLabel = "Notifications", // Defaults to "Notifications"
   general,
   personal,
   unreadGeneral,
@@ -98,8 +100,8 @@ export function NotificationsDialog({
         <DialogHeader className="pr-10">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Notifications
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              {contextLabel}
             </DialogTitle>
             <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs cursor-pointer" onClick={() => onMarkAllRead(tab)}>
               <CheckCheck className="h-3.5 w-3.5" />

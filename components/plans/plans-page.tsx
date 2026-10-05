@@ -35,7 +35,8 @@ function mapWorkItemToPlan(workItem: any): Plan {
     teamMembers: [],
     project: workItem.project ?? null,
     event: workItem.event ?? null,
-    expenses: [],
+    expenses: workItem.expenses ?? [],
+    income: workItem.income ?? [],
     eventData: undefined,
     simulation: {
       costMultiplier: 1,
@@ -147,8 +148,8 @@ export function PlansPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader label="Loading plans..." />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader label="Loading plans..."/>
       </div>
     );
   }

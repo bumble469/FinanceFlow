@@ -16,7 +16,7 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-export function useNotifications(planId: string | undefined) {
+export function useNotifications(planId?: string) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadGeneral, setUnreadGeneral] = useState(0);
   const [unreadPersonal, setUnreadPersonal] = useState(0);
@@ -24,30 +24,31 @@ export function useNotifications(planId: string | undefined) {
   const [personal, setPersonal] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const baseUrl = planId ? `/api/plan/${planId}/notifications` : `/api/notifications`;
+
   const fetchTab = useCallback(async (scope: "GENERAL" | "PERSONAL") => {
-    if (!planId) return;
     setLoading(true);
     try {
-      const res = await authClient.request(`/api/plan/${planId}/notifications`, {
+      const res = await authClient.request(baseUrl, {
         method: "GET",
         params: { scope },
       });
       if (scope === "GENERAL") setGeneral(res.data.data.items);
       else setPersonal(res.data.data.items);
+      
       setUnreadCount(res.data.data.unreadCount);
       setUnreadGeneral(res.data.data.unreadGeneral);
       setUnreadPersonal(res.data.data.unreadPersonal);
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
+      console.error(`Failed to fetch ${planId ? 'plan' : 'global'} notifications:`, err);
     } finally {
       setLoading(false);
     }
-  }, [planId]);
+  }, [baseUrl, planId]);
 
   const refreshUnreadCount = useCallback(async () => {
-    if (!planId) return;
     try {
-      const res = await authClient.request(`/api/plan/${planId}/notifications`, {
+      const res = await authClient.request(baseUrl, {
         method: "GET",
         params: { scope: "GENERAL" },
       });
@@ -57,22 +58,28 @@ export function useNotifications(planId: string | undefined) {
     } catch (err) {
       console.error("Failed to refresh unread count:", err);
     }
-  }, [planId]);
+  }, [baseUrl]);
 
   useEffect(() => {
-    if (!planId) return;
     refreshUnreadCount();
-
     const socket = getSocket();
-    function handleNew(payload: { workItemId: string; scope: "GENERAL" | "PERSONAL" }) {
-      if (payload.workItemId !== planId) return;
+
+    function handleNew(payload: { workItemId?: string; scope: "GENERAL" | "PERSONAL" }) {
+      // If we are in a Plan context, ignore global notifications or notifications for other plans
+      if (planId && payload.workItemId !== planId) return;
+      
+      // If we are in a Global context, ignore plan-specific notifications
+      if (!planId && payload.workItemId) return;
+
       setUnreadCount((c) => c + 1);
       if (payload.scope === "GENERAL") setUnreadGeneral((c) => c + 1);
       else setUnreadPersonal((c) => c + 1);
+      
       // prepend into whichever tab it belongs to, if already loaded
       if (payload.scope === "GENERAL") setGeneral((prev) => (prev.length ? [payload as any, ...prev] : prev));
       else setPersonal((prev) => (prev.length ? [payload as any, ...prev] : prev));
     }
+
     socket.on("notification:new", handleNew);
     return () => {
       socket.off("notification:new", handleNew);
@@ -80,11 +87,9 @@ export function useNotifications(planId: string | undefined) {
   }, [planId, refreshUnreadCount]);
 
   const markRead = async (id: string) => {
-    if (!planId) return;
     try {
-      await authClient.request(`/api/plan/${planId}/notifications/${id}`, { method: "PATCH" });
-      const wasUnread =
-        general.find((n) => n.id === id && !n.isRead) || personal.find((n) => n.id === id && !n.isRead);
+      await authClient.request(`${baseUrl}/${id}`, { method: "PATCH" });
+      const wasUnread = general.find((n) => n.id === id && !n.isRead) || personal.find((n) => n.id === id && !n.isRead);
       const scope = general.some((n) => n.id === id) ? "GENERAL" : "PERSONAL";
 
       setGeneral((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
@@ -101,9 +106,8 @@ export function useNotifications(planId: string | undefined) {
   };
 
   const markAllRead = async (scope?: "GENERAL" | "PERSONAL") => {
-    if (!planId) return;
     try {
-      await authClient.request(`/api/plan/${planId}/notifications/read-all`, {
+      await authClient.request(`${baseUrl}/read-all`, {
         method: "PATCH",
         data: { scope },
       });

@@ -13,7 +13,7 @@ export async function notify({
   entityType,
   entityId,
 }: {
-  workItemId: string;
+  workItemId?: string; 
   userIds: string[];
   scope: NotificationScope;
   type: NotificationType;
@@ -25,9 +25,10 @@ export async function notify({
   const recipients = Array.from(new Set(userIds)).filter(Boolean);
   if (recipients.length === 0) return;
 
+  // 1. Create Notifications in DB
   await prisma.notification.createMany({
     data: recipients.map((userId) => ({
-      workItemId,
+      workItemId, // if undefined, Prisma ignores it (which is what we want)
       userId,
       scope,
       type,
@@ -38,6 +39,7 @@ export async function notify({
     })),
   });
 
+  // 2. Emit Real-time Socket Events
   const createdAt = new Date().toISOString();
   for (const userId of recipients) {
     emitToUser(userId, "notification:new", {
@@ -51,6 +53,7 @@ export async function notify({
       createdAt,
     });
   }
+
   const eligibleUsers = await prisma.user.findMany({
     where: {
       id: { in: recipients },
@@ -61,35 +64,48 @@ export async function notify({
       email: true,
       name: true,
       emailNotificationScope: true,
-      emailNotificationPlans: {
-        where: { workItemId },
-        select: { id: true },
-      },
+      emailNotificationPlans: workItemId
+        ? {
+            where: { workItemId },
+            select: { id: true },
+          }
+        : undefined, 
     },
   });
 
-  const workItem = await prisma.workItem.findUnique({
-    where: { id: workItemId },
-    select: { name: true },
-  });
+  const workItem = workItemId
+    ? await prisma.workItem.findUnique({
+        where: { id: workItemId },
+        select: { name: true },
+      })
+    : null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  
+  let linkUrl = appUrl;
+  if (workItemId) {
+    linkUrl = `${appUrl}/plans/${workItemId}`;
+  } else if (type.startsWith("CONNECTION")) {
+    linkUrl = `${appUrl}/connections`;
+  }
 
   const toSend = eligibleUsers.filter(
-    (u) => u.emailNotificationScope === "ALL" || (u as any).emailNotificationPlans?.length > 0
+    (u) =>
+      u.emailNotificationScope === "ALL" ||
+      ((u as any).emailNotificationPlans && (u as any).emailNotificationPlans.length > 0)
   );
 
   void Promise.allSettled(
     toSend.map((u) =>
       sendEmail({
         to: u.email,
-        toName: u.name,
+        toName: u.name || "There",
         subject: title,
         htmlContent: notificationEmailHtml({
           title,
           message,
-          planName: workItem?.name,
-          appUrl: `${appUrl}/plans/${workItemId}`,
+          planName: workItem?.name, // Safe to pass undefined here
+          appUrl: linkUrl,
         }),
       })
     )

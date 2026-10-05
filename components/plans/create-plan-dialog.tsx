@@ -62,6 +62,7 @@ export function CreatePlanDialog({
   const [hasTicketing, setHasTicketing] = useState(false);
   const [hasStalls, setHasStalls] = useState(false);
   const [hasHardware, setHasHardware] = useState(false);
+  const [allowConnectionsGroup, setAllowConnectionsGroup] = useState(true);
 
   // project-specific
   const [startDate, setStartDate] = useState("");
@@ -84,6 +85,7 @@ export function CreatePlanDialog({
       setCurrency(initialData.currency);
       setIsActive(initialData.status === "active");
       setHasHardware(!!initialData.hasHardware);
+      setAllowConnectionsGroup(initialData.allowConnectionsGroup ?? true);
 
       if (initialData.project) {
         setStartDate(initialData.project.startDate?.split("T")[0] ?? "");
@@ -112,6 +114,7 @@ export function CreatePlanDialog({
       setHasTicketing(false);
       setHasStalls(false);
       setHasHardware(false);
+      setAllowConnectionsGroup(true);
     }
   }, [initialData, open]);
 
@@ -138,6 +141,7 @@ export function CreatePlanDialog({
           currency,
           status: isActive ? "ACTIVE" : "INACTIVE",
           hasHardware,
+          allowConnectionsGroup,
           // type-specific
           ...(type === "project" && {
             startDate: startDate || undefined,
@@ -388,7 +392,7 @@ export function CreatePlanDialog({
             </Select>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+                    <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
             <div>
               <Label>Hardware Logistics</Label>
               <p className="text-xs text-muted-foreground">Track equipment requests, rentals, and inventory</p>
@@ -398,6 +402,29 @@ export function CreatePlanDialog({
               onCheckedChange={setHasHardware}
               disabled={isLoading}
             />
+          </div>
+
+          {/* Always show, but handle edit mode behavior */}
+          <div className="flex flex-col gap-2 rounded-lg border border-border px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Allow Connections Group</Label>
+                <p className="text-xs text-muted-foreground">
+                  Creates a group chat for everyone added to this {type}
+                </p>
+              </div>
+              <Switch
+                className="cursor-pointer"
+                checked={allowConnectionsGroup}
+                onCheckedChange={setAllowConnectionsGroup}
+                disabled={isLoading}
+              />
+            </div>
+            {isEditMode && initialData?.allowConnectionsGroup && !allowConnectionsGroup && (
+              <p className="text-xs text-destructive mt-1">
+                Warning: Turning this off will permanently delete the group chat and all its messages.
+              </p>
+            )}
           </div>
 
           {/* DESCRIPTION */}

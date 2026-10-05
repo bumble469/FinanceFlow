@@ -34,14 +34,28 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  UserPlus,
+  Loader2,
+  Check,
+  Clock,
 } from "lucide-react";
-import type { TeamMember } from "@/lib/types";
+import type { TeamMember, ConnectionStatus } from "@/lib/types";
 import { ROLES } from "@/lib/types";
 import { getCurrencySymbol } from "@/lib/currency";
 import { AddEditMemberDialog } from "./components/member-dialog";
 import { authClient } from "@/lib/auth-client";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useSnackbar } from '@/lib/useSnackbar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { PlanPermissions } from "@/lib/permissions";
 import { PermissionsDialog } from "./components/permissions-dialog";
 import { canEditPermissionsOf, type CoAdminPermissions, type ManagerPermissions } from "@/lib/permissions";
@@ -115,6 +129,8 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
   const { show } = useSnackbar();
   const [permissionsMember, setPermissionsMember] = useState<TeamMember | null>(null);
+  const [connectingUserId, setConnectingUserId] = useState<string | null>(null);
+  const [connectConfirmMember, setConnectConfirmMember] = useState<TeamMember | null>(null);
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -229,6 +245,30 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
     } catch (err: any) {
       console.error(err);
       show(err?.response?.data?.error || "Failed to delete member", "error");
+    }
+  };
+
+  const handleConnect = async (member: TeamMember) => {
+    setConnectingUserId(member.userId);
+    try {
+      const res = await authClient.request("/api/connections/request", {
+        method: "POST",
+        data: { targetUserId: member.userId },
+      });
+      const newStatus: ConnectionStatus = res.data.status === "ACCEPTED" ? "ACCEPTED" : "PENDING_SENT";
+      setTeamMembers(
+        teamMembers.map((m) =>
+          m.userId === member.userId ? { ...m, connectionStatus: newStatus } : m
+        )
+      );
+      show(
+        newStatus === "ACCEPTED" ? "Connected!" : "Connection request sent",
+        "success"
+      );
+    } catch (err: any) {
+      show(err?.response?.data?.error || "Failed to send request", "error");
+    } finally {
+      setConnectingUserId(null);
     }
   };
 
@@ -560,6 +600,50 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                                 </Button>
                               )}
 
+                            {/* Connect icon — only for others, only when not already accepted */}
+                            {!isSelf && member.connectionStatus !== "SELF" && (
+                              member.connectionStatus === "ACCEPTED" ? (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  disabled
+                                  title="Already connected"
+                                  className="text-success cursor-default"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              ) : member.connectionStatus === "PENDING_SENT" ? (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  disabled
+                                  title="Connection request sent — awaiting response"
+                                  className="text-muted-foreground cursor-default"
+                                >
+                                  <Clock className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  disabled={connectingUserId === member.userId}
+                                  onClick={() => setConnectConfirmMember(member)}
+                                  className="cursor-pointer"
+                                  title={
+                                    member.connectionStatus === "PENDING_RECEIVED"
+                                      ? "Accept connection request"
+                                      : "Send connection request"
+                                  }
+                                >
+                                  {connectingUserId === member.userId ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserPlus className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )
+                            )}
+
                             {permissions.canDeleteMember && !isSelf && (
                               <Button
                                 size="icon"
@@ -609,6 +693,46 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
           </div>
         </div>
       </div>
+
+      {/* Connect Confirmation Dialog */}
+      <AlertDialog
+        open={!!connectConfirmMember}
+        onOpenChange={(open) => { if (!open) setConnectConfirmMember(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {connectConfirmMember?.connectionStatus === "PENDING_RECEIVED"
+                ? "Accept Connection Request"
+                : "Send Connection Request"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {connectConfirmMember?.connectionStatus === "PENDING_RECEIVED"
+                ? `${connectConfirmMember?.user?.name ?? "This person"} has already sent you a request. Confirm to accept and connect.`
+                : `Send a connection request to ${connectConfirmMember?.user?.name ?? "this person"}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="cursor-pointer hover:text-gray-600"
+              onClick={() => setConnectConfirmMember(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer"
+              onClick={() => {
+                if (connectConfirmMember) {
+                  handleConnect(connectConfirmMember);
+                  setConnectConfirmMember(null);
+                }
+              }}
+            >
+              {connectConfirmMember?.connectionStatus === "PENDING_RECEIVED" ? "Accept" : "Connect"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

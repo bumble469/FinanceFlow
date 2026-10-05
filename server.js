@@ -90,10 +90,16 @@ app.prepare().then(() => {
       socket.leave(`plan:${planId}`);
     });
 
-    // Joining an item's edit presence. If allowMultipleEditing is false and
-    // someone else is already present, the join is denied (exclusive lock).
-    // If true, everyone is granted and simply added to the presence set —
-    // used purely to drive the "N people editing" indicator.
+    socket.on("chat:typing", ({ recipientId, conversationId, connectionId, isTyping }) => {
+      if (!recipientId) return;
+      // Relay the typing status directly to the recipient's user room
+      io.to(`user:${recipientId}`).emit("chat:typing", {
+        conversationId,
+        connectionId,
+        isTyping,
+      });
+    });
+
     socket.on("editing:join", ({ planId, itemType, itemId, userName, allowMultipleEditing }, cb) => {
       const key = presenceKey(planId, itemType, itemId);
       let presenceMap = editPresence.get(key);

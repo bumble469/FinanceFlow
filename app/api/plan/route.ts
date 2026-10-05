@@ -28,6 +28,9 @@ export async function GET() {
             planInfo: true,
             departments: true,
             phases: true,
+            expenses: true,
+            income: true,
+            group: true,
           },
         },
       },
@@ -36,13 +39,28 @@ export async function GET() {
       },
     });
 
+    const castWorkItem = (workItem: any) => ({
+      ...workItem,
+      budget: workItem.budget !== null ? Number(workItem.budget) : null,
+      expenses: (workItem.expenses ?? []).map((e: any) => ({
+        ...e,
+        amount: Number(e.amount),
+        paidAmount: Number(e.paidAmount),
+      })),
+      income: (workItem.income ?? []).map((i: any) => ({
+        ...i,
+        amount: i.amount !== null ? Number(i.amount) : null,
+        receivedAmount: Number(i.receivedAmount),
+      })),
+    });
+
     const myPlans = memberships
       .filter((membership) => membership.role === "ADMIN")
-      .map((membership) => membership.workItem);
+      .map((membership) => castWorkItem(membership.workItem));
 
     const collaborations = memberships
       .filter((membership) => membership.role !== "ADMIN")
-      .map((membership) => membership.workItem);
+      .map((membership) => castWorkItem(membership.workItem));
 
     const invitations = await prisma.workItemMemberInvitation.findMany({
       where: {
@@ -129,7 +147,8 @@ export async function POST(request: NextRequest) {
     const {
       name, type, budget, description, status, currency,
       startDate, endDate, methodology,
-      eventDate, venue, hasTicketing, hasStalls, hasHardware
+      eventDate, venue, hasTicketing, hasStalls, hasHardware,
+      allowConnectionsGroup
     } = body;
 
     if (!name?.trim()) {
@@ -167,8 +186,9 @@ export async function POST(request: NextRequest) {
     if (!budget || isNaN(budget) || budget <= 0) {
       return NextResponse.json({ success: false, error: 'Budget must be a positive number' }, { status: 400 });
     }
-
+    
     const plan = await prisma.$transaction(async (tx) => {
+      const createGroup = allowConnectionsGroup !== false;
       const workItem = await tx.workItem.create({
         data: {
           name: name.trim(),
@@ -179,6 +199,7 @@ export async function POST(request: NextRequest) {
           currency,
           accountId: account.id,
           hasHardware: !!hasHardware,
+          allowConnectionsGroup: createGroup,
         },
       });
 
@@ -215,6 +236,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid plan type' }, { status: 400 });
       }
 
+      if (createGroup) {
+        await tx.group.create({ data: { workItemId: workItem.id } });
+      }
+
       return tx.workItem.findUnique({
         where: { id: workItem.id },
         include: {
@@ -224,6 +249,7 @@ export async function POST(request: NextRequest) {
           departments: true,
           phases: true,
           members: true,
+          group: true,
         },
       });
     });
