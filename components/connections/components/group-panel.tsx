@@ -483,11 +483,7 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
             ref={inputRef}
             value={draft}
             onChange={(e) => {
-              if (palette.handleKeyDown) {
-                handleDraftChange(e.target.value);
-              } else {
-                handleDraftChange(e.target.value);
-              }
+              handleDraftChange(e.target.value);
             }}
             onKeyDown={(e) => {
               if (palette.handleKeyDown(e)) return;

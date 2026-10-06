@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
-
-const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
+import { saveFile } from "@/lib/storage";
 
 function evidenceTypeFor(mimeType: string): "IMAGE" | "VIDEO" | "DOCUMENT" {
   if (mimeType.startsWith("image/")) return "IMAGE";
@@ -120,21 +117,20 @@ export async function POST(
     });
 
     if (files.length > 0) {
-      const dir = path.join(UPLOAD_ROOT, workItemId, "tasks", taskId, "submissions", submission.id);
-      await mkdir(dir, { recursive: true });
-
       for (const file of files) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const safeName = `${randomUUID()}-${file.name}`;
-        await writeFile(path.join(dir, safeName), buffer);
+        const safeName = `${randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { url } = await saveFile(
+          `${workItemId}/tasks/${taskId}/submissions/${submission.id}/${safeName}`,
+          file
+        );
 
         await prisma.taskSubmissionFile.create({
           data: {
             submissionId: submission.id,
             fileType: evidenceTypeFor(file.type),
             fileName: file.name,
-            filePath: `/uploads/${workItemId}/tasks/${taskId}/submissions/${submission.id}/${safeName}`,
-            fileSize: buffer.length,
+            filePath: url,
+            fileSize: file.size,
             mimeType: file.type,
           },
         });

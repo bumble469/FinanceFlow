@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { writeFile, unlink, mkdir } from "fs/promises";
-import path from "path";
+import { saveFile, deleteFile } from "@/lib/storage";
 import { getPlanAccess } from "@/lib/get-plan-access";
 
 type Params = { params: Promise<{ id: string }> };
@@ -50,25 +49,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     const event = await prisma.event.findUnique({ where: { workItemId: planId } });
     if (!event) return NextResponse.json({ error: "This plan is not an event" }, { status: 400 });
 
-    // remove old file, if any
-    if (event.upiQrPath) {
-      try {
-        await unlink(path.join(process.cwd(), "public", event.upiQrPath));
-      } catch {
-        // old file already gone — fine
-      }
-    }
-
-    const uploadDir = path.join(process.cwd(), "public", "uploads", planId);
-    await mkdir(uploadDir, { recursive: true });
-
-    const ext = file.name.split(".").pop() || "png";
-    const fileName = `upi-qr-${Date.now()}.${ext}`;
-    const filePath = path.join(uploadDir, fileName);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
-
-    const publicPath = `/uploads/${planId}/${fileName}`;
+    const ext = (file.name.split(".").pop() || "png").replace(/[^a-zA-Z0-9]/g, "");
+    const { url: publicPath } = await saveFile(
+      `${planId}/qr/upi-qr-${Date.now()}.${ext}`,
+      file
+    );
 
     const updated = await prisma.event.update({
       where: { workItemId: planId },
@@ -80,6 +65,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
     });
 
+    await deleteFile(event.upiQrPath);
     return NextResponse.json({ success: true, data: { upiQrUrl: updated.upiQrUrl, upiQrUpdatedAt: updated.upiQrUpdatedAt } });
   } catch (err) {
     console.error("[POST /ticketing/qr]", err);
@@ -103,13 +89,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     const event = await prisma.event.findUnique({ where: { workItemId: planId } });
     if (!event) return NextResponse.json({ error: "This plan is not an event" }, { status: 400 });
 
-    if (event.upiQrPath) {
-      try {
-        await unlink(path.join(process.cwd(), "public", event.upiQrPath));
-      } catch {
-        // already gone — fine
-      }
-    }
+    await deleteFile(event.upiQrPath);
 
     await prisma.event.update({
       where: { workItemId: planId },
