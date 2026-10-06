@@ -41,6 +41,7 @@ export function Sidebar({
   const { currentPlanMeta } = useFinancialStore();
 
   const isEvent = currentPlanMeta?.type === "event";
+  const financeOn = currentPlanMeta?.financeEnabled !== false;
 
   return (
     <aside
@@ -91,7 +92,10 @@ export function Sidebar({
           </p>
         )}
 
-        {navItems.filter((item) => item.id !== "hardware" || currentPlanMeta?.hasHardware).map((item) => {
+        {navItems.filter((item) => 
+          (item.id !== "hardware" || currentPlanMeta?.hasHardware) &&
+          (item.id !== "expenses" || financeOn)
+        ).map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
 

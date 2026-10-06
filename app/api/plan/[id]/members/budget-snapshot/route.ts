@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { getProjectDurationMonths } from "@/lib/budget-validation";
+import { assertFinanceEnabled } from "@/lib/finance-guard";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: planId } = await params;
+
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
+    
     const excludeMemberId = req.nextUrl.searchParams.get("excludeMemberId") || undefined;
 
     const workItem = await prisma.workItem.findUnique({

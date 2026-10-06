@@ -45,6 +45,7 @@ export function DashboardLayout({ planId, initialSection }: DashboardLayoutProps
   }
 
   const isOwner = currentPlanMeta.isOwner;
+  const financeOn = currentPlanMeta.financeEnabled !== false;
   const activeTitle = navItems.find((n) => n.id === activeSection)?.label ?? "Overview";
 
   const renderSection = () => {
@@ -52,7 +53,9 @@ export function DashboardLayout({ planId, initialSection }: DashboardLayoutProps
       case "overview": return <OverviewSection />;
       case "reports": return <ReportsSection planId={planId} />;
       case "team": return <TeamSection planId={planId} permissions={permissions} />;
-      case "expenses": return <RevenueExpenseSection planId={planId} permissions={permissions} />;
+      case "expenses": return financeOn
+        ? <RevenueExpenseSection planId={planId} permissions={permissions} />
+        : <OverviewSection />;
       case "event": return <PlanningSection permissions={permissions} />;
       case "workspace": return <Workspace planId={planId} />;
       case "hardware": return <HardwareSection planId={planId} permissions={permissions} />;

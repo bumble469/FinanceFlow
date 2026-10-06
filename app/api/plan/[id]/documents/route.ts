@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 import { randomUUID } from "crypto";
+import { saveFile } from "@/lib/storage";
 import { notify, getAllPlanUserIds } from "@/lib/notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -134,17 +133,12 @@ export async function POST(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
       }
 
-      // build upload path: public/uploads/[planId]/[uuid]-[filename]
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
       const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const uniqueFilename = `${randomUUID()}-${safeFilename}`;
-      const uploadDir = join(process.cwd(), "public", "uploads", planId);
-
-      await mkdir(uploadDir, { recursive: true });
-      await writeFile(join(uploadDir, uniqueFilename), buffer);
-
-      const fileUrl = `/uploads/${planId}/${uniqueFilename}`;
+      const { url: fileUrl } = await saveFile(
+        `${planId}/documents/${randomUUID()}-${safeFilename}`,
+        file
+      );
+      
       const fileSize = file.size > 1024 * 1024
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`;

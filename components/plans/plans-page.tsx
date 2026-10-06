@@ -45,6 +45,9 @@ function mapWorkItemToPlan(workItem: any): Plan {
       isSimulating: false,
     },
     mode: workItem.type === "EVENT" ? "event" : "project",
+    hasHardware: workItem.hasHardware ?? false,
+    allowConnectionsGroup: workItem.allowConnectionsGroup ?? true,
+    financeEnabled: workItem.financeEnabled ?? true,
   };
 }
 

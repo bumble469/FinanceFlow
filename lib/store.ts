@@ -26,6 +26,7 @@ export interface CurrentPlanMeta {
   venue?: string | null;
   hasHardware?: boolean;
   allowMultipleEditing?: boolean;
+  financeEnabled?: boolean;
 }
 
 interface AccountStore {

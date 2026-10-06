@@ -52,10 +52,11 @@ export default function PlanDashboardPage() {
           eventDate: data.event?.eventDate ?? null,
           venue: data.event?.venue ?? null,
           allowMultipleEditing: data.allowMultipleEditing ?? true,
+          financeEnabled: data.financeEnabled ?? true,
         });
 
         setPlanMeta({
-          eventBudget: data.budget,
+          eventBudget: data.budget ?? 0,
           departments: data.departments || [],
           modules: data.phases || [],
           tasks: data.tasks || [],

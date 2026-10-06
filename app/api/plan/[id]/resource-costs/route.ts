@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { assertFinanceEnabled } from "@/lib/finance-guard";
 
 function num(v: unknown): number {
   return v === null || v === undefined ? 0 : Number(v);
@@ -14,6 +15,9 @@ export async function GET(
     const { id: workItemId } = await params;
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const blocked = await assertFinanceEnabled(workItemId);
+    if (blocked) return blocked;
 
     const member = await prisma.workItemMember.findUnique({
       where: { workItemId_userId: { workItemId, userId: user.sub } },

@@ -361,6 +361,7 @@ model WorkItem {
   hasHardware Boolean @default(false)
   allowMultipleEditing Boolean @default(true)
   allowConnectionsGroup Boolean @default(true)
+  financeEnabled Boolean @default(true)
 
   members WorkItemMember[]
   invitations WorkItemMemberInvitation[]

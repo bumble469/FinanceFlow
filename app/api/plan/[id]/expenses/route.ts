@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { notify, getPlanAdminUserIds } from "@/lib/notify";
-
+import { assertFinanceEnabled } from "@/lib/finance-guard";
 type Params = { params: Promise<{ id: string }> };
 
 const VALID_CATEGORIES = ["SALARY", "MARKETING", "TOOLS", "OPERATIONS", "EVENT", "EQUIPMENT", "OTHER"];
@@ -69,8 +69,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: planId } = await params;
-
     const access = await resolveAccess(planId, user.sub);
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const isRestricted = !access.isOwner && !["ADMIN", "CO_ADMIN"].includes(access.role);

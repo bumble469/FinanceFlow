@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { canModifyOwnExpenseRequest } from "@/lib/permissions";
+import { assertFinanceEnabled } from "@/lib/finance-guard";
 
 type Params = { params: Promise<{ id: string; expenseId: string }> };
 
@@ -92,6 +93,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const { id: planId, expenseId } = await params;
 
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
+
     const access = await resolveAccess(planId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -154,6 +158,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: planId, expenseId } = await params;
+
+    const blocked = await assertFinanceEnabled(planId);
+    if (blocked) return blocked;
 
     const access = await resolveAccess(planId, user.sub);
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

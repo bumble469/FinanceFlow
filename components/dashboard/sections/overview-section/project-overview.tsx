@@ -33,8 +33,10 @@ export function ProjectOverview() {
 
   const [resourceCosts, setResourceCosts] = useState<{ departments: any[] }>({ departments: [] });
 
+  const financeOn = currentPlanMeta?.financeEnabled !== false;
+
   useEffect(() => {
-    if (!currentPlanId) return;
+    if (!currentPlanId || !financeOn) return;
     authClient.request(`/api/plan/${currentPlanId}/resource-costs`)
       .then((res) => setResourceCosts(res.data.data))
       .catch((err) => console.error("Failed to fetch resource costs:", err));
@@ -103,6 +105,7 @@ export function ProjectOverview() {
     overdueMilestones: overdueMilestones.length,
     blockedTasks,
     totalTasks,
+    financeEnabled: financeOn,
   });
 
   const expensesByCategory = expenses.reduce((acc, e) => {
@@ -119,6 +122,7 @@ export function ProjectOverview() {
     departmentStats,
     totalExpenses: expenses.reduce((s, e) => s + e.amount, 0),
     expensesByCategory,
+    financeEnabled: financeOn,
   });
 
   return (
@@ -136,20 +140,22 @@ export function ProjectOverview() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
-        <MetricCard
-          title="Budget Allocated" value={formatCurrency(totalAllocated, currency)}
-          status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"} icon={<ArrowDownCircle className="h-4 w-4" />}
-          isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
-        />
-        <MetricCard
-          title="Budget Remaining" value={formatCurrency(remainingBudget, currency)}
-          status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-4 w-4" />}
-          isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
-        />
-        <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
-      </div>
+      {financeOn && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
+          <MetricCard
+            title="Budget Allocated" value={formatCurrency(totalAllocated, currency)}
+            status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"} icon={<ArrowDownCircle className="h-4 w-4" />}
+            isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
+          />
+          <MetricCard
+            title="Budget Remaining" value={formatCurrency(remainingBudget, currency)}
+            status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-4 w-4" />}
+            isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
+          />
+          <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-5 flex flex-col items-center justify-center gap-1" style={{ background: "linear-gradient(135deg, rgba(52,211,153,0.04) 0%, rgba(30,30,40,0) 60%)" }}>
@@ -242,27 +248,29 @@ export function ProjectOverview() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
-          <h3 className="font-semibold text-foreground mb-3">Department budget vs. actual</h3>
-          {deptRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">No departments yet</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(180, deptRows.length * 45)}>
-              <BarChart data={deptRows} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
-                <XAxis type="number" tickFormatter={(v) => formatCurrency(v, currency)} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: number) => formatCurrency(v, currency)} />
-                <Bar dataKey="budget" fill="#94a3b8" radius={[0, 4, 4, 0]} name="Budget" />
-                <Bar dataKey="actual" radius={[0, 4, 4, 0]} name="Actual">
-                  {deptRows.map((d, i) => <Cell key={i} fill={d.over ? "#ef4444" : "#22c55e"} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {financeOn && (
+          <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+            <h3 className="font-semibold text-foreground mb-3">Department budget vs. actual</h3>
+            {deptRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">No departments yet</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, deptRows.length * 45)}>
+                <BarChart data={deptRows} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                  <XAxis type="number" tickFormatter={(v) => formatCurrency(v, currency)} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v, currency)} />
+                  <Bar dataKey="budget" fill="#94a3b8" radius={[0, 4, 4, 0]} name="Budget" />
+                  <Bar dataKey="actual" radius={[0, 4, 4, 0]} name="Actual">
+                    {deptRows.map((d, i) => <Cell key={i} fill={d.over ? "#ef4444" : "#22c55e"} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
 
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className={cn("rounded-xl border border-border bg-card p-5", !financeOn && "lg:col-span-3")}>
           <h3 className="flex items-center gap-2 font-semibold text-foreground mb-3">
             <Users className="h-4 w-4 text-muted-foreground" />
             Top workload
@@ -282,24 +290,28 @@ export function ProjectOverview() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold text-foreground mb-3">Department breakdown</h3>
-        <DepartmentBreakdown departmentStats={departmentStats} currency={currency} />
-      </div>
+      {financeOn && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="font-semibold text-foreground mb-3">Department breakdown</h3>
+          <DepartmentBreakdown departmentStats={departmentStats} currency={currency} />
+        </div>
+      )}
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold text-foreground mb-3">Income vs. Expense trend</h3>
-        <IncomeExpenseTrend income={income} expenses={expenses} currency={currency} />
-      </div>
+      {financeOn && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="font-semibold text-foreground mb-3">Income vs. Expense trend</h3>
+          <IncomeExpenseTrend income={income} expenses={expenses} currency={currency} />
+        </div>
+      )}
 
-      <PendingApprovalsWidget expenseCount={pendingExpenseApprovals} extensionCount={pendingExtensions} />
+      <PendingApprovalsWidget showExpenses={financeOn} expenseCount={pendingExpenseApprovals} extensionCount={pendingExtensions} />
 
-      {currentPlanMeta?.hasHardware && <HardwareImpactWidget planId={currentPlanId!} />}
+      {currentPlanMeta?.hasHardware && financeOn && <HardwareImpactWidget planId={currentPlanId!} />}
 
 
       <RiskPanel
         items={[
-          { label: "over budget", sublabel: "departments", count: deptRows.filter((d) => d.over).length, icon: ArrowDownCircle },
+          ...(financeOn ? [{ label: "over budget", sublabel: "departments", count: deptRows.filter((d) => d.over).length, icon: ArrowDownCircle }] : []),
           { label: "overdue", sublabel: "milestones", count: overdueMilestones.length, icon: Clock },
           { label: "blocked", sublabel: "tasks", count: blockedTasks, icon: Ban },
         ]}
