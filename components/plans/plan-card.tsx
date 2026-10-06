@@ -112,17 +112,19 @@ export function PlanCard({
     );
   }
 
-  const spent = plan.expenses.reduce(
+  const financeOn = plan.financeEnabled !== false;
+  const spent = financeOn ? plan.expenses.reduce(
     (sum: number, e: any) => sum + e.amount,
     0
-  );
+  ) : 0;
 
-  const spentPercent = (spent / plan.budget) * 100;
+  const spentPercent = financeOn && plan.budget ? (spent / plan.budget) * 100 : 0;
   const isWarning = spentPercent > 75;
   const isRisk = spentPercent > 90;
 
   const getStatusColor = () => {
     if (plan.status === "completed") return "bg-muted text-muted-foreground";
+    if (!financeOn) return "bg-success text-success-foreground";
     if (isRisk) return "bg-danger text-danger-foreground";
     if (isWarning) return "bg-warning text-warning-foreground";
     return "bg-success text-success-foreground";
@@ -130,6 +132,7 @@ export function PlanCard({
 
   const getStatusLabel = () => {
     if (plan.status === "completed") return "Completed";
+    if (!financeOn) return "Active";
     if (isRisk) return "At Risk";
     if (isWarning) return "Warning";
     return "Healthy";
@@ -190,9 +193,15 @@ export function PlanCard({
           </Badge>
         </div>
 
-        <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-          {plan.currency || "$"}{spent.toLocaleString()} spent of {plan.currency || "$"}{plan.budget.toLocaleString()} budget ({spentPercent.toFixed(0)}% used)
-        </p>
+        {financeOn ? (
+          <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+            {plan.currency || "$"}{spent.toLocaleString()} spent of {plan.currency || "$"}{plan.budget.toLocaleString()} budget ({spentPercent.toFixed(0)}% used)
+          </p>
+        ) : (
+          <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+            {plan.description || (plan.type === "project" ? "Project" : "Event")}
+          </p>
+        )}
       </div>
 
       <div className="border-t border-border/60 p-3 flex items-center gap-2">

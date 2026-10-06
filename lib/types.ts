@@ -37,7 +37,7 @@ export interface Plan {
   name: string;
   type: PlanType;
   status: PlanStatus;
-  budget: number;
+  budget: number | null;
   spent: number;
   createdAt: Date;
   teamMembers: TeamMember[];
@@ -52,6 +52,7 @@ export interface Plan {
   mode: "project" | "event";
   hasHardware?: boolean;
   allowConnectionsGroup?: boolean;
+  financeEnabled?: boolean;
 }
 
 // ============================================================

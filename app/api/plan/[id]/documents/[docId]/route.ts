@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { unlink } from "fs/promises";
-import { join } from "path";
+import { deleteFile } from "@/lib/storage";
 
 type Params = { params: Promise<{ id: string; docId: string }> };
 
@@ -68,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (!doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
 
-    if (doc.type === "DOCUMENT") {
+    if (doc.type === "FILE") {
       return NextResponse.json({ error: "Uploaded files cannot be edited — delete and re-upload instead" }, { status: 400 });
     }
 
@@ -128,15 +127,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
     if (!doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
 
-    // if it's a file, delete from disk
-    if (doc.type === "DOCUMENT" && doc.fileUrl) {
-      const filePath = join(process.cwd(), "public", doc.fileUrl);
-      try {
-        await unlink(filePath);
-      } catch {
-        // file might already be gone — don't block the delete
-        console.warn(`Could not delete file at ${filePath}`);
-      }
+    // if it's a file, delete it from storage
+    if (doc.type === "FILE" && doc.fileUrl) {
+      await deleteFile(doc.fileUrl);
     }
 
     await prisma.workItemDocument.delete({ where: { id: docId } });

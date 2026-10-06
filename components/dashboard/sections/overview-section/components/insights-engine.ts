@@ -11,8 +11,16 @@ export function computeHealthScore(params: {
   overdueMilestones: number;
   blockedTasks: number;
   totalTasks: number;
+  financeEnabled?: boolean;
 }): number {
-  const { budgetUsedPct, progressPct, overdueMilestones, blockedTasks, totalTasks } = params;
+  const { budgetUsedPct, progressPct, overdueMilestones, blockedTasks, totalTasks, financeEnabled = true } = params;
+
+  if (!financeEnabled) {
+    const scheduleScore = Math.max(0, 100 - overdueMilestones * 15);
+    const blockedRatio = totalTasks > 0 ? blockedTasks / totalTasks : 0;
+    const executionScore = Math.max(0, 100 - blockedRatio * 100);
+    return Math.round(Math.max(0, Math.min(100, scheduleScore * 0.5 + executionScore * 0.5)));
+  }
 
   const budgetScore = budgetUsedPct <= 100 ? 100 - Math.max(0, budgetUsedPct - progressPct) : Math.max(0, 60 - (budgetUsedPct - 100));
   const scheduleScore = Math.max(0, 100 - overdueMilestones * 15);
@@ -34,14 +42,16 @@ export function generateInsights(params: {
   expensesByCategory: Record<string, number>;
   daysLeft?: number | null;
   incompleteTasks?: number;
+  financeEnabled?: boolean;
 }): Insight[] {
   const insights: Insight[] = [];
   const {
     budgetUsedPct, progressPct, overdueMilestones, blockedTasks,
     departmentStats, expensesByCategory, totalExpenses, daysLeft, incompleteTasks,
+    financeEnabled = true,
   } = params;
 
-  if (budgetUsedPct - progressPct > 15) {
+  if (financeEnabled && budgetUsedPct - progressPct > 15) {
     insights.push({
       text: `Budget utilization (${budgetUsedPct.toFixed(0)}%) is running ahead of progress (${progressPct.toFixed(0)}%).`,
       tone: "warning",
@@ -73,11 +83,11 @@ export function generateInsights(params: {
   }
 
   const overBudgetDept = departmentStats.find((d) => d.budgetUsedPct > 100);
-  if (overBudgetDept) {
+  if (financeEnabled && overBudgetDept) {
     insights.push({ text: `${overBudgetDept.name} has exceeded its allocated budget (${overBudgetDept.budgetUsedPct.toFixed(0)}% used).`, tone: "negative" });
   }
 
-  if (totalExpenses > 0) {
+  if (financeEnabled && totalExpenses > 0) {
     const sorted = Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]);
     if (sorted.length > 0) {
       const [topCategory, topAmount] = sorted[0];

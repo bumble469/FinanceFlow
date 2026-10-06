@@ -175,10 +175,16 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ success: false, error: 'Plan not found' }, { status: 404 });
 
     const body = await request.json();
-    const { name, status, budget, description, currency, startDate, endDate, methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, allowMultipleEditing, allowConnectionsGroup } = body;
+    const { name, status, budget, description, currency, startDate, endDate, 
+      methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, 
+      allowMultipleEditing, allowConnectionsGroup, financeEnabled } = body;
 
     if (status && !Object.values(WorkItemStatus).includes(status)) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
+    }
+
+    if (financeEnabled === true && existing.budget == null && !(budget > 0)) {
+      return NextResponse.json({ success: false, error: 'Budget required to enable finance' }, { status: 400 });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -193,6 +199,7 @@ export async function PATCH(
           ...(hasHardware !== undefined ? { hasHardware: !!hasHardware } : {}),
           ...(allowMultipleEditing !== undefined ? { allowMultipleEditing: !!allowMultipleEditing } : {}),
           ...(allowConnectionsGroup !== undefined ? { allowConnectionsGroup: !!allowConnectionsGroup } : {}),
+          ...(financeEnabled !== undefined ? { financeEnabled: !!financeEnabled } : {}),
         },
       });
 

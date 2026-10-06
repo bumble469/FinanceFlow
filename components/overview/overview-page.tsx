@@ -66,7 +66,7 @@ export function OverviewPage() {
 
   const allActivePlans = useMemo(() => [...myPlans, ...collaborations], [myPlans, collaborations]);
 
-  const myTotalBudget = allActivePlans.reduce((sum, p) => sum + p.budget, 0);
+  const myTotalBudget = allActivePlans.reduce((sum, p) => sum + (p.budget ?? 0), 0);
   const myTotalSpent = allActivePlans.reduce(
     (sum, p) => sum + (p.expenses?.reduce((esum, e) => esum + e.amount, 0) || 0),
     0
@@ -75,7 +75,7 @@ export function OverviewPage() {
 
   const riskPlans = allActivePlans.filter((p) => {
     const spent = p.expenses?.reduce((s, e) => s + e.amount, 0) || 0;
-    const pct = p.budget > 0 ? (spent / p.budget) * 100 : 0;
+    const pct = (p.budget ?? 0) > 0 ? (spent / (p.budget ?? 0)) * 100 : 0;
     return pct > 75;
   });
 
@@ -99,14 +99,14 @@ export function OverviewPage() {
           </h1>
           <p className="text-muted-foreground">Here's what's happening across your plans today.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        {/* <div className="flex flex-wrap gap-3">
           <Button variant="secondary" size="sm" className="gap-2 rounded-full">
             <Receipt className="h-4 w-4" /> Log Expense
           </Button>
           <Button variant="secondary" size="sm" className="gap-2 rounded-full">
             <Users className="h-4 w-4" /> Invite Team
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {/* Row 1: wide left block (2x2 stats + trend chart) / My Tasks / Upcoming Deadlines */}

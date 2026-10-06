@@ -34,8 +34,10 @@ export function EventOverview() {
   const loadingExtras = false;
   const [resourceCosts, setResourceCosts] = useState<{ departments: any[] }>({ departments: [] });
 
+  const financeOn = currentPlanMeta?.financeEnabled !== false;
+
   useEffect(() => {
-    if (!currentPlanId) return;
+    if (!currentPlanId || !financeOn) return;
     authClient.request(`/api/plan/${currentPlanId}/resource-costs`)
       .then((res) => setResourceCosts(res.data.data))
       .catch((err) => console.error("Failed to fetch resource costs:", err));
@@ -108,6 +110,7 @@ export function EventOverview() {
     overdueMilestones: overdueMilestones.length,
     blockedTasks,
     totalTasks,
+    financeEnabled: financeOn,
   });
 
   const insights = generateInsights({
@@ -121,6 +124,7 @@ export function EventOverview() {
     expensesByCategory,
     daysLeft,
     incompleteTasks: totalTasks - doneTasks,
+    financeEnabled: financeOn,
   });
 
   return (
@@ -146,20 +150,22 @@ export function EventOverview() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
-        <MetricCard
-          title="Budget Allocated" value={formatCurrency(totalAllocated, currency)}
-          status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"} icon={<ArrowDownCircle className="h-4 w-4" />}
-          isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
-        />
-        <MetricCard
-          title="Budget Remaining" value={formatCurrency(remainingBudget, currency)}
-          status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-4 w-4" />}
-          isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
-        />
-        <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
-      </div>
+      {financeOn && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Total Budget" value={formatCurrency(totalBudget, currency)} status="healthy" icon={<Wallet className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
+          <MetricCard
+            title="Budget Allocated" value={formatCurrency(totalAllocated, currency)}
+            status={totalAllocated / totalBudget > 0.9 ? "warning" : "healthy"} icon={<ArrowDownCircle className="h-4 w-4" />}
+            isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0}
+          />
+          <MetricCard
+            title="Budget Remaining" value={formatCurrency(remainingBudget, currency)}
+            status={balanceStatus} trend={balanceStatus === "healthy" ? "up" : "down"} icon={<PiggyBank className="h-4 w-4" />}
+            isSimulated={simulation.isSimulating} progressPercent={totalBudget > 0 ? (remainingBudget / totalBudget) * 100 : 0}
+          />
+          <MetricCard title="Profit / Loss" value={formatCurrency(estimatedProfitLoss, currency)} status={profitStatus} trend={estimatedProfitLoss >= 0 ? "up" : "down"} icon={<TrendingUp className="h-4 w-4" />} isSimulated={simulation.isSimulating} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-5 flex flex-col items-center justify-center">
@@ -195,10 +201,12 @@ export function EventOverview() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Revenue</span>
-                  <span className="font-mono font-medium text-green-600 dark:text-green-400">{formatCurrency(ticketRevenue, currency)}</span>
-                </div>
+                {financeOn && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Revenue</span>
+                    <span className="font-mono font-medium text-green-600 dark:text-green-400">{formatCurrency(ticketRevenue, currency)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -230,31 +238,33 @@ export function EventOverview() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="font-semibold text-foreground mb-3">Revenue sources</h3>
-            {revenueSources.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">No income recorded yet</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={120}>
-                  <PieChart>
-                    <Pie data={revenueSources} dataKey="value" nameKey="name" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
-                      {revenueSources.map((r, i) => <Cell key={i} fill={r.hex} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => formatCurrency(v, currency)} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {revenueSources.map((r) => (
-                    <span key={r.name} className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.hex }} />
-                      {r.name}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {financeOn && (
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="font-semibold text-foreground mb-3">Revenue sources</h3>
+              {revenueSources.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">No income recorded yet</p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <PieChart>
+                      <Pie data={revenueSources} dataKey="value" nameKey="name" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
+                        {revenueSources.map((r, i) => <Cell key={i} fill={r.hex} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatCurrency(v, currency)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {revenueSources.map((r) => (
+                      <span key={r.name} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.hex }} />
+                        {r.name}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -277,21 +287,25 @@ export function EventOverview() {
                 return (
                   <div key={s.id} className="rounded-lg border border-border px-3 py-2.5">
                     <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                    <div className="flex items-center justify-between mt-1.5 text-xs">
-                      <span className="text-muted-foreground">Net</span>
-                      <span className={cn("font-mono font-medium", net >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
-                        {net >= 0 ? "+" : ""}{formatCurrency(net, currency)}
-                      </span>
-                    </div>
+                    {financeOn && (
+                      <div className="flex items-center justify-between mt-1.5 text-xs">
+                        <span className="text-muted-foreground">Net</span>
+                        <span className={cn("font-mono font-medium", net >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
+                          {net >= 0 ? "+" : ""}{formatCurrency(net, currency)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-            <span>Total stall income: <span className="font-mono font-medium text-foreground">{formatCurrency(stallIncomeTotal, currency)}</span></span>
-            <span>Total stall expense: <span className="font-mono font-medium text-foreground">{formatCurrency(stallExpenseTotal, currency)}</span></span>
-          </div>
+          {financeOn && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+              <span>Total stall income: <span className="font-mono font-medium text-foreground">{formatCurrency(stallIncomeTotal, currency)}</span></span>
+              <span>Total stall expense: <span className="font-mono font-medium text-foreground">{formatCurrency(stallExpenseTotal, currency)}</span></span>
+            </div>
+          )}
         </div>
       )}
 
@@ -310,19 +324,23 @@ export function EventOverview() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold text-foreground mb-3">Department breakdown</h3>
-        <DepartmentBreakdown departmentStats={departmentStats} currency={currency} />
-      </div>
+      {financeOn && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="font-semibold text-foreground mb-3">Department breakdown</h3>
+          <DepartmentBreakdown departmentStats={departmentStats} currency={currency} />
+        </div>
+      )}
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold text-foreground mb-3">Income vs. Expense trend</h3>
-        <IncomeExpenseTrend income={income} expenses={expenses} currency={currency} />
-      </div>
+      {financeOn && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="font-semibold text-foreground mb-3">Income vs. Expense trend</h3>
+          <IncomeExpenseTrend income={income} expenses={expenses} currency={currency} />
+        </div>
+      )}
 
-      <PendingApprovalsWidget expenseCount={pendingExpenseApprovals} extensionCount={pendingExtensions} />
+      <PendingApprovalsWidget showExpenses={financeOn} expenseCount={pendingExpenseApprovals} extensionCount={pendingExtensions} />
 
-      {currentPlanMeta?.hasHardware && <HardwareImpactWidget planId={currentPlanId!} />}
+      {currentPlanMeta?.hasHardware && financeOn && <HardwareImpactWidget planId={currentPlanId!} />}
 
       <RiskPanel
         items={[
