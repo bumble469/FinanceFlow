@@ -5,6 +5,7 @@ export default interface GroupSummary {
   name: string;
   type: "PROJECT" | "EVENT" | "PLAN";
   status: string;
+  imageUrl: string | null;
 }
 
 export async function getUserGroups(userId: string): Promise<GroupSummary[]> {
@@ -14,7 +15,7 @@ export async function getUserGroups(userId: string): Promise<GroupSummary[]> {
         OR: [{ account: { userId } }, { members: { some: { userId } } }],
       },
     },
-    include: { workItem: { select: { id: true, name: true, type: true, status: true } } },
+    include: { workItem: { select: { id: true, name: true, type: true, status: true, imageUrl: true } } },
     orderBy: { workItem: { updatedAt: "desc" } },
   });
 
@@ -23,6 +24,7 @@ export async function getUserGroups(userId: string): Promise<GroupSummary[]> {
     name: g.workItem.name,
     type: g.workItem.type,
     status: g.workItem.status,
+    imageUrl: g.workItem.imageUrl,
   }));
 }
 

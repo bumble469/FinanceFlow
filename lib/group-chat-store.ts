@@ -3,7 +3,7 @@ import type { Message } from "@/lib/chat-store";
 import type { GroupMemberView } from "@/lib/group";
 
 export interface GroupHeader {
-  workItem: { id: string; name: string; type: string; status: string };
+  workItem: { id: string; name: string; type: string; status: string; imageUrl?: string | null };
   members: GroupMemberView[];
 }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { randomUUID } from "crypto";
-import { saveFile } from "@/lib/storage";
+import { saveFile, MAX_FILE_SIZE } from "@/lib/storage";
 import { notify, getAllPlanUserIds } from "@/lib/notify";
 
 type Params = { params: Promise<{ id: string }> };
@@ -79,7 +79,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 // ── POST /api/plan/[id]/documents ────────────────────────────────────────────
-// Creates a note (JSON) or uploads a file (multipart/form-data)
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const user = await getAuthUser();
@@ -104,7 +103,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
       if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
-
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: "File size cannot exceed 4 MB" }, { status: 413 });
+      }
       // validate file type — allow pdf, word, excel, images, txt
       const allowed = [
         "application/pdf",

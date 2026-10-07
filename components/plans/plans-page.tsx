@@ -45,6 +45,7 @@ function mapWorkItemToPlan(workItem: any): Plan {
       isSimulating: false,
     },
     mode: workItem.type === "EVENT" ? "event" : "project",
+    imageUrl: workItem.imageUrl ?? null,
     hasHardware: workItem.hasHardware ?? false,
     allowConnectionsGroup: workItem.allowConnectionsGroup ?? true,
     financeEnabled: workItem.financeEnabled ?? true,
@@ -183,7 +184,7 @@ export function PlansPage() {
             Plans
           </h1>
           <p className="text-muted-foreground">
-            Manage financial plans for {account?.name}
+            Manage plans for {account?.name}
           </p>
         </div>
 

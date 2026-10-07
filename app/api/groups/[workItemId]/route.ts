@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workIte
 
     const workItem = await prisma.workItem.findUnique({
       where: { id: workItemId },
-      select: { id: true, name: true, type: true, status: true },
+      select: { id: true, name: true, type: true, status: true, imageUrl: true },
     });
     if (!workItem) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

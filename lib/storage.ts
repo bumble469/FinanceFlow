@@ -1,9 +1,9 @@
-import { put, del } from "@vercel/blob";
-import { writeFile, mkdir, unlink } from "fs/promises";
+import { put, del, list } from "@vercel/blob";
+import { writeFile, mkdir, unlink, rm } from "fs/promises";
 import path from "path";
 
 const DRIVER = process.env.STORAGE_DRIVER === "blob" ? "blob" : "local";
-const MAX_FILE_SIZE = 4 * 1024 * 1024;
+export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 const LOCAL_PREFIX = "/uploads/";
 const BLOB_PREFIX = "/api/files/";
@@ -44,5 +44,22 @@ export async function deleteFile(url: string | null | undefined) {
     }
   } catch {
     console.warn(`[storage] could not delete ${url}`);
+  }
+}
+
+export async function deletePlanFiles(planId: string) {
+  try {
+    if (DRIVER === "blob") {
+      let cursor: string | undefined;
+      do {
+        const page = await list({ prefix: `${planId}/`, cursor });
+        if (page.blobs.length) await del(page.blobs.map((b) => b.url));
+        cursor = page.hasMore ? page.cursor : undefined;
+      } while (cursor);
+    } else {
+      await rm(path.join(LOCAL_ROOT, planId), { recursive: true, force: true });
+    }
+  } catch {
+    console.warn(`[storage] could not clean up files for plan ${planId}`);
   }
 }

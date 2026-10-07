@@ -15,6 +15,7 @@ interface GroupSummary {
   name: string;
   type: string;
   status: string;
+  imageUrl?: string | null;
   unreadCount: number;
 }
 
@@ -103,6 +104,7 @@ export function GroupsTab({ tab, onTabChange }: GroupsTabProps) {
                 key={g.workItemId}
                 name={g.name}
                 type={g.type}
+                imageUrl={g.imageUrl}
                 active={selectedId === g.workItemId}
                 unreadCount={g.unreadCount}
                 onClick={() => setSelectedId(g.workItemId)}

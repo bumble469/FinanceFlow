@@ -116,6 +116,7 @@ function getDocColor(doc: Doc) {
 }
 
 // ─── config ───────────────────────────────────────────────────────────────────
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 const FOLDER_CONFIG: { key: FileCategory; label: string }[] = [
   { key: "all", label: "All files" },
@@ -665,6 +666,11 @@ export function ReportsSection({ planId }: { planId: string }) {
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError("File is too large — maximum size is 4 MB");
+      e.target.value = "";
+      return;
+    }
     setUploadError(null);
     setUploadProgress(0);
 
@@ -681,16 +687,17 @@ export function ReportsSection({ planId }: { planId: string }) {
     };
 
     xhr.onload = () => {
-      if (xhr.status === 201) {
-        const body = JSON.parse(xhr.responseText);
+      let body: any = null;
+      try { body = JSON.parse(xhr.responseText); } catch {}
+
+      if (xhr.status === 201 && body?.data) {
         setDocs((prev) => [body.data, ...prev]);
-        setUploadProgress(null);
+      } else if (xhr.status === 413) {
+        setUploadError("File is too large — maximum size is 4 MB");
       } else {
-        const body = JSON.parse(xhr.responseText);
-        setUploadError(body.error || "Upload failed");
-        setUploadProgress(null);
+        setUploadError(body?.error || `Upload failed (${xhr.status})`);
       }
-      // reset input so same file can be re-selected if needed
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
 

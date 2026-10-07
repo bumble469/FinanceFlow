@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 interface GroupListItemProps {
   name: string;
   type: string;
+  imageUrl?: string | null;
   active?: boolean;
   unreadCount?: number;
   onClick: () => void;
 }
 
-export function GroupListItem({ name, type, active, unreadCount = 0, onClick }: GroupListItemProps) {
+export function GroupListItem({ name, type, imageUrl, active, unreadCount = 0, onClick }: GroupListItemProps) {
   return (
     <button
       onClick={onClick}
@@ -18,8 +19,12 @@ export function GroupListItem({ name, type, active, unreadCount = 0, onClick }: 
       )}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-primary border border-primary/20">
-          {name?.[0]?.toUpperCase() || "G"}
+        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-primary border border-primary/20">
+          {imageUrl ? (
+            <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+          ) : (
+            name?.[0]?.toUpperCase() || "G"
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground truncate">{name}</p>
