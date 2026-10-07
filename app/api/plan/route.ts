@@ -3,105 +3,135 @@ import { WorkItemType, MemberRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const userEmail = user.email;
+    // overview page sends ?activity=1 to also get the last 90 days of money rows for its chart
+    const withActivity = request.nextUrl.searchParams.get("activity") === "1";
 
     const memberships = await prisma.workItemMember.findMany({
-      where: {
-        userId: user.sub,
-      },
-      include: {
+      where: { userId: user.sub },
+      select: {
+        role: true,
         workItem: {
-          include: {
-            project: true,
-            event: true,
-            planInfo: true,
-            departments: true,
-            phases: true,
-            expenses: true,
-            income: true,
-            group: true,
-          },
-        },
-      },
-      orderBy: {
-        joinedAt: "desc",
-      },
-    });
-
-    const castWorkItem = (workItem: any) => ({
-      ...workItem,
-      budget: workItem.budget !== null ? Number(workItem.budget) : null,
-      expenses: (workItem.expenses ?? []).map((e: any) => ({
-        ...e,
-        amount: Number(e.amount),
-        paidAmount: Number(e.paidAmount),
-      })),
-      income: (workItem.income ?? []).map((i: any) => ({
-        ...i,
-        amount: i.amount !== null ? Number(i.amount) : null,
-        receivedAmount: Number(i.receivedAmount),
-      })),
-    });
-
-    const myPlans = memberships
-      .filter((membership) => membership.role === "ADMIN")
-      .map((membership) => castWorkItem(membership.workItem));
-
-    const collaborations = memberships
-      .filter((membership) => membership.role !== "ADMIN")
-      .map((membership) => castWorkItem(membership.workItem));
-
-    const invitations = await prisma.workItemMemberInvitation.findMany({
-      where: {
-        email: userEmail,
-        status: "PENDING",
-      },
-      include: {
-        invitedBy: {
           select: {
             id: true,
+            accountId: true,
             name: true,
-            email: true,
-          },
-        },
-        workItem: {
-          include: {
-            project: true,
-            event: true,
-            planInfo: true,
+            type: true,
+            status: true,
+            budget: true,
+            currency: true,
+            description: true,
+            imageUrl: true,
+            hasHardware: true,
+            allowConnectionsGroup: true,
+            financeEnabled: true,
+            createdAt: true,
+            project: { select: { startDate: true, endDate: true, methodology: true } },
+            event: { select: { eventDate: true, venue: true, hasTicketing: true, hasStalls: true } },
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
+      orderBy: { joinedAt: "desc" },
+    });
+
+    // finance-off plans are skipped entirely, so they count as 0 everywhere
+    const financeIds = memberships
+      .filter((m) => m.workItem.financeEnabled)
+      .map((m) => m.workItem.id);
+
+    // one aggregate query instead of loading every expense row
+    const spentRows = financeIds.length
+      ? await prisma.expense.groupBy({
+          by: ["workItemId"],
+          where: { workItemId: { in: financeIds } },
+          _sum: { amount: true },
+        })
+      : [];
+    const spentByPlan = new Map(
+      spentRows.map((r) => [r.workItemId, Number(r._sum.amount ?? 0)])
+    );
+
+    let expenseRows: any[] = [];
+    let incomeRows: any[] = [];
+    if (withActivity && financeIds.length) {
+      const since = new Date(Date.now() - 90 * 86400000);
+      [expenseRows, incomeRows] = await Promise.all([
+        prisma.expense.findMany({
+          where: {
+            workItemId: { in: financeIds },
+            OR: [{ occurredAt: { gte: since } }, { occurredAt: null, createdAt: { gte: since } }],
+          },
+          select: { workItemId: true, amount: true, paidAmount: true, occurredAt: true, createdAt: true },
+        }),
+        prisma.income.findMany({
+          where: {
+            workItemId: { in: financeIds },
+            OR: [{ receivedAt: { gte: since } }, { receivedAt: null, createdAt: { gte: since } }],
+          },
+          select: { workItemId: true, receivedAmount: true, receivedAt: true, createdAt: true },
+        }),
+      ]);
+    }
+
+    const shape = (m: (typeof memberships)[number]) => {
+      const w = m.workItem;
+      return {
+        ...w,
+        role: m.role,
+        budget: w.budget !== null ? Number(w.budget) : null,
+        spent: spentByPlan.get(w.id) ?? 0,
+        ...(withActivity
+          ? {
+              expenses: expenseRows
+                .filter((e) => e.workItemId === w.id)
+                .map((e) => ({
+                  amount: Number(e.amount),
+                  paidAmount: Number(e.paidAmount),
+                  occurredAt: e.occurredAt,
+                  createdAt: e.createdAt,
+                })),
+              income: incomeRows
+                .filter((i) => i.workItemId === w.id)
+                .map((i) => ({
+                  receivedAmount: Number(i.receivedAmount),
+                  receivedAt: i.receivedAt,
+                  createdAt: i.createdAt,
+                })),
+            }
+          : {}),
+      };
+    };
+
+    const myPlans = memberships.filter((m) => m.role === "ADMIN").map(shape);
+    const collaborations = memberships.filter((m) => m.role !== "ADMIN").map(shape);
+
+    // invitation card only shows name, type, description, inviter and role
+    const invitations = await prisma.workItemMemberInvitation.findMany({
+      where: { email: user.email, status: "PENDING" },
+      select: {
+        id: true,
+        workItemId: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        invitedBy: { select: { id: true, name: true, email: true } },
+        workItem: { select: { id: true, name: true, type: true, description: true } },
       },
+      orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json(
-      {
-        success: true,
-        data: {
-          myPlans,
-          collaborations,
-          invitations,
-        },
-      },
+      { success: true, data: { myPlans, collaborations, invitations } },
       { status: 200 }
     );
   } catch (error) {
     console.error("[Plan GET] Error:", error);
-
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }

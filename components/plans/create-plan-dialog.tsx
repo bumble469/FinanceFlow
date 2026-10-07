@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { ImagePlus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import { Plan } from "@/lib/types";
 import { useFinancialStore } from "@/lib/store";
 import type { PlanType } from "@/lib/types";
 import { authClient } from "@/lib/auth-client";
+import { useSnackbar } from "@/lib/useSnackbar";
 
 interface CreatePlanDialogProps {
   open: boolean;
@@ -52,6 +54,7 @@ export function CreatePlanDialog({
   maxEvents,
 }: CreatePlanDialogProps) {
   const { addPlan } = useFinancialStore();
+  const { show } = useSnackbar();
 
   const [name, setName] = useState("");
   const [type, setType] = useState<PlanType>("project");
@@ -77,10 +80,46 @@ export function CreatePlanDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // plan image
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Only JPG, PNG or WEBP images are allowed");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setError("Image size cannot exceed 4 MB");
+      return;
+    }
+
+    setError(null);
+    if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setRemoveImage(false);
+  };
+
+  const handleImageClear = () => {
+    if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+    setRemoveImage(!!initialData?.imageUrl);
+  };
+
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
-      setType(initialData.type);
+      setType(
+        String(initialData.type).toLowerCase() as PlanType
+      );
       setBudget(initialData.budget != null ? String(initialData.budget) : "");
       setDescription(initialData.description || "");
       setCurrency(initialData.currency);
@@ -91,7 +130,7 @@ export function CreatePlanDialog({
 
       if (initialData.project) {
         setStartDate(initialData.project.startDate?.split("T")[0] ?? "");
-        setDeadline(initialData.project.deadline?.split("T")[0] ?? "");
+        setDeadline(initialData.project.endDate?.split("T")[0] ?? "");
         setMethodology(initialData.project.methodology ?? "");
       }
 
@@ -101,6 +140,10 @@ export function CreatePlanDialog({
         setHasTicketing(!!initialData.event.hasTicketing);
         setHasStalls(!!initialData.event.hasStalls);
       }
+
+      setImageFile(null);
+      setImagePreview(initialData.imageUrl ?? null);
+      setRemoveImage(false);
     } else {
       setName("");
       setType("project");
@@ -118,6 +161,9 @@ export function CreatePlanDialog({
       setHasHardware(false);
       setAllowConnectionsGroup(true);
       setFinanceEnabled(true);
+      setImageFile(null);
+      setImagePreview(null);
+      setRemoveImage(false);
     }
   }, [initialData, open]);
 
@@ -141,7 +187,7 @@ export function CreatePlanDialog({
           name: name.trim(),
           type: type.toUpperCase(),
           description: description.trim(),
-          status: isActive ? "ACTIVE" : "INACTIVE",
+          status: isActive ? "ACTIVE" : "ARCHIVED",
           hasHardware,
           allowConnectionsGroup,
           financeEnabled,
@@ -163,6 +209,33 @@ export function CreatePlanDialog({
 
       if (!isEditMode) {
         addPlan(data.data);
+      }
+
+      // image: upload / remove after the plan exists (storage path + access need the plan id)
+      const planId: string | undefined = isEditMode ? initialData?.id : data.data?.id;
+      if (planId && (imageFile || removeImage)) {
+        try {
+          if (imageFile) {
+            const formData = new FormData();
+            formData.append("file", imageFile);
+            await authClient.request(`/api/plan/${planId}/image`, {
+              method: "POST",
+              data: formData,
+            });
+          } else {
+            await authClient.request(`/api/plan/${planId}/image`, { method: "DELETE" });
+          }
+        } catch (imgErr: any) {
+          const msg = imgErr?.response?.data?.error || (imgErr as Error).message;
+          if (isEditMode) {
+            // plan details are saved; keep the dialog open so the image can be retried
+            show(`Plan updated, but the image failed: ${msg}`, "error");
+            onPlanCreate();
+            return;
+          }
+          console.error("Plan created, but image upload failed:", msg);
+          show(`Plan created, but the image failed: ${msg}`, "error");
+        }
       }
 
       onPlanCreate();
@@ -205,6 +278,59 @@ export function CreatePlanDialog({
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
             />
+          </div>
+
+          {/* PLAN IMAGE */}
+          <div className="space-y-2">
+            <Label>
+              Plan Image{" "}
+              <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageSelect}
+              disabled={isLoading}
+            />
+            {imagePreview ? (
+              <div className="relative h-36 w-full overflow-hidden rounded-lg border border-border">
+                <img src={imagePreview} alt="Plan preview" className="h-full w-full object-cover" />
+                <div className="absolute right-2 top-2 flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 cursor-pointer bg-background/80 backdrop-blur-sm hover:bg-background"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isLoading}
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="h-8 w-8 cursor-pointer bg-background/80 backdrop-blur-sm hover:bg-background"
+                    onClick={handleImageClear}
+                    disabled={isLoading}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex h-28 w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:bg-muted/40"
+              >
+                <ImagePlus className="h-5 w-5" />
+                <span className="text-xs">Upload image (JPG, PNG, WEBP · max 4 MB)</span>
+              </button>
+            )}
           </div>
 
           {/* PLAN TYPE */}

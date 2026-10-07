@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { WorkItemStatus, WorkItemType, MemberRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
+import { deletePlanFiles } from '@/lib/storage';
 
 // ─── SHARED INCLUDE ────────────────────────────────────────────────────────
 const planInclude = {
@@ -271,6 +272,7 @@ export async function DELETE(
     if (!existing) return NextResponse.json({ success: false, error: 'Plan not found' }, { status: 404 });
 
     await prisma.workItem.delete({ where: { id: planId } });
+    await deletePlanFiles(planId);
 
     return NextResponse.json({ success: true, message: 'Plan deleted successfully' }, { status: 200 });
   } catch (error) {

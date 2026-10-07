@@ -27,6 +27,7 @@ export interface CurrentPlanMeta {
   hasHardware?: boolean;
   allowMultipleEditing?: boolean;
   financeEnabled?: boolean;
+  description?: string | null;
 }
 
 interface AccountStore {

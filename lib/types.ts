@@ -50,6 +50,7 @@ export interface Plan {
   currency: string;
   description: string;
   mode: "project" | "event";
+  imageUrl?: string | null;
   hasHardware?: boolean;
   allowConnectionsGroup?: boolean;
   financeEnabled?: boolean;
