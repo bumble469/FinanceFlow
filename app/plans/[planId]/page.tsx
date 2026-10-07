@@ -53,6 +53,7 @@ export default function PlanDashboardPage() {
           venue: data.event?.venue ?? null,
           allowMultipleEditing: data.allowMultipleEditing ?? true,
           financeEnabled: data.financeEnabled ?? true,
+          description: data.description ?? null,
         });
 
         setPlanMeta({

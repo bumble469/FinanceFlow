@@ -308,8 +308,12 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
 
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center">
           <div className="py-8 flex flex-col items-center border-b border-border w-full">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-3xl text-primary border border-primary/20 mb-4">
-              {header.workItem.name[0]?.toUpperCase()}
+            <div className="h-24 w-24 overflow-hidden rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-3xl text-primary border border-primary/20 mb-4">
+              {header.workItem.imageUrl ? (
+                <img src={header.workItem.imageUrl} alt={header.workItem.name} className="h-full w-full object-cover" />
+              ) : (
+                header.workItem.name[0]?.toUpperCase()
+              )}
             </div>
             <h2 className="text-xl font-semibold">{header.workItem.name}</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -370,8 +374,12 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-primary border border-primary/20">
-          {header.workItem.name[0]?.toUpperCase()}
+        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-semibold text-primary border border-primary/20">
+          {header.workItem.imageUrl ? (
+            <img src={header.workItem.imageUrl} alt={header.workItem.name} className="h-full w-full object-cover" />
+          ) : (
+            header.workItem.name[0]?.toUpperCase()
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground truncate">{header.workItem.name}</p>
