@@ -284,8 +284,14 @@ export function PlanSettingsDialog({ open, onOpenChange, planId }: PlanSettingsD
             <SettingsIcon className="h-4 w-4" />
             Plan settings
           </DialogTitle>
-          <DialogDescription className="truncate">
-            {currentPlanMeta?.name ?? "This plan"}
+          <DialogDescription className="flex items-center gap-2 truncate">
+            <span className="truncate">
+              {currentPlanMeta?.name ?? "This plan"}
+            </span>
+
+            <span className="shrink-0 rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+              Under Work
+            </span>
           </DialogDescription>
         </DialogHeader>
 
