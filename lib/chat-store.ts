@@ -12,6 +12,10 @@ export interface Message {
   entityType?: string | null;
   entityId?: string | null;
   entity?: ChatEntity | null;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
   sender: { id: string; name: string | null; image: string | null };
 }
 

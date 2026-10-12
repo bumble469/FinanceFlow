@@ -34,8 +34,8 @@ interface AccountStore {
   account: Account | null;
   setAccount: (account: Account) => void;
 
-  currentUser: { id: string; email: string; name?: string } | null;
-  setCurrentUser: (user: { id: string; email: string; name?: string } | null) => void;
+  currentUser: { id: string; email: string; name?: string; image?: string | null; headline?: string | null } | null;
+  setCurrentUser: (user: { id: string; email: string; name?: string; image?: string | null; headline?: string | null } | null) => void;
 
   plans: Plan[];
   setPlans: (plans: Plan[]) => void;

@@ -257,6 +257,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          String    @default("user")
+  headline      String?
 
   emailNotificationsEnabled Boolean                @default(true)
   emailNotificationScope    EmailNotificationScope  @default(ALL)
@@ -1360,6 +1361,10 @@ model Message {
 
   entityType String?
   entityId   String?
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
 
   readAt DateTime?
 
