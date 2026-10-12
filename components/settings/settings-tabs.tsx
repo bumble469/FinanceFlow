@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogoutSection } from "@/components/settings/logout-section";
+import { ProfileSection, PreferencesSection } from "@/components/settings/profile-section";
 import { authClient } from "@/lib/auth-client";
 import type { AccountSubscription } from "@/lib/types";
 import Link from "next/link";
@@ -73,22 +74,8 @@ export function SettingsTabs() {
 
             {/* GENERAL TAB */}
             <TabsContent value="general" className="space-y-6">
-              <Card className="border border-border bg-card p-6">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                  About This Dashboard
-                </h2>
-                <p className="text-muted-foreground mb-3">
-                  This financial management dashboard uses a hierarchical, multi-plan architecture:
-                </p>
-                <div className="space-y-2 text-sm text-muted-foreground font-mono">
-                  <p>Account (Individual or Company)</p>
-                  <p className="ml-4">└── Plans (Projects or Events)</p>
-                  <p className="ml-8">├── Team Members</p>
-                  <p className="ml-8">├── Expenses</p>
-                  <p className="ml-8">├── Event Data (if Event type)</p>
-                  <p className="ml-8">└── Simulation State</p>
-                </div>
-              </Card>
+              <ProfileSection />
+              <PreferencesSection />
               <LogoutSection />
             </TabsContent>
 

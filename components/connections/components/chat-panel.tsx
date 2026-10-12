@@ -1,18 +1,22 @@
 "use client";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Plus, Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { useFinancialStore } from "@/lib/store";
 import { getSocket } from "@/lib/socket-client";
 import { ContextSelector } from "@/components/connections/components/context-selector";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ContextSummaryCard } from "@/components/connections/components/context-summary-card";
 import { EntityCard } from "@/components/connections/components/entity-card";
 import type { ChatEntity } from "@/lib/chat-types";
 import { useChatStore } from "@/lib/chat-store";
 import { SlashPalette, useSlashPalette } from "@/components/connections/components/slash-palette";
 import { entityHref } from "@/lib/entity-links";
+import { AttachmentCard } from "@/components/connections/components/attachment-card";
+import { FilePreviewDialog } from "@/components/shared/file-preview-dialog";
+import { validateUpload, formatBytes, type PreviewFile } from "@/lib/file-preview";
 
 interface ChatPanelProps {
   connectionId: string;
@@ -34,6 +38,10 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
   const context = useChatStore((s) => (conversationId ? s.contextByConversation[conversationId] : undefined));
   const [contextLoading, setContextLoading] = useState(false);
   const [attachment, setAttachment] = useState<ChatEntity | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const [loading, setLoading] = useState(!cachedConversationId);
@@ -168,28 +176,50 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
     onPick: (entity) => setAttachment(entity),
   });
 
+  const handlePickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    const problem = validateUpload(f);
+    setFileError(problem);
+    setPendingFile(problem ? null : f);
+  };
+
   const handleSend = async () => {
     const body = draft.trim();
     const pending = attachment;
-    if ((!body && !pending) || !conversationId || sending || palette.open) return;
+    const file = pendingFile;
+    if ((!body && !pending && !file) || !conversationId || sending || palette.open) return;
 
     setSending(true);
     setDraft("");
     setAttachment(null);
+    setPendingFile(null);
+    setFileError(null);
 
     const socket = getSocket();
     socket.emit("chat:typing", { recipientId: user.id, conversationId, connectionId, isTyping: false });
 
     try {
+      let payload: any;
+      if (file) {
+        payload = new FormData();
+        payload.append("body", body);
+        payload.append("file", file);
+      } else {
+        payload = { body, ...(pending ? { entity: { type: pending.type, id: pending.id } } : {}) };
+      }
       const res = await authClient.request(`/api/conversations/${conversationId}/messages`, {
         method: "POST",
-        data: { body, ...(pending ? { entity: { type: pending.type, id: pending.id } } : {}) },
+        data: payload,
       });
       appendMessage(conversationId, res.data.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to send message:", err);
       setDraft(body);
       setAttachment(pending);
+      setPendingFile(file);
+      setFileError(err?.response?.data?.error ?? "Failed to send");
     } finally {
       setSending(false);
     }
@@ -215,9 +245,10 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0">
+    <div className="flex-1 min-w-0 w-full flex flex-col h-full min-h-0">
+      <FilePreviewDialog file={previewFile} onOpenChange={(o) => !o && setPreviewFile(null)} />
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 pr-12 border-b border-border shrink-0">
         <button onClick={onBack} className="md:hidden flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted cursor-pointer">
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -264,7 +295,7 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
             <p className="text-sm text-muted-foreground">This is the start of your conversation with {user.name || user.email}.</p>
           </div>
         ) : (
-                    messages.map((m, idx) => {
+          messages.map((m, idx) => {
             const isOwn = m.senderId === currentUser?.id;
             const prevCtx = idx === 0 ? null : messages[idx - 1].workItemId ?? null;
             const curCtx = m.workItemId ?? null;
@@ -300,6 +331,24 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
                         />
                       </div>
                     )}
+                    {m.attachmentUrl && (
+                      <div className="mb-1.5">
+                        <AttachmentCard
+                          name={m.attachmentName ?? "file"}
+                          mime={m.attachmentMime}
+                          size={m.attachmentSize}
+                          isOwn={isOwn}
+                          onOpen={() =>
+                            setPreviewFile({
+                              url: m.attachmentUrl!,
+                              name: m.attachmentName ?? "file",
+                              mime: m.attachmentMime,
+                              size: m.attachmentSize,
+                            })
+                          }
+                        />
+                      </div>
+                    )}
                     {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
                     <p className={`text-[10px] mt-0.5 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                       {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -313,7 +362,7 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
         <div ref={bottomRef} />
       </div>
 
-            {/* Composer */}
+      {/* Composer */}
       <div className="relative border-t border-border shrink-0">
         <SlashPalette palette={palette} />
 
@@ -322,20 +371,53 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
             <EntityCard entity={attachment} compact onRemove={() => setAttachment(null)} />
           </div>
         )}
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handlePickFile} />
+        {(pendingFile || fileError) && (
+          <div className="flex items-center gap-2 px-3 pt-3 pb-2 border-b border-border/60 text-xs">
+            {pendingFile && (
+              <>
+                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{pendingFile.name}</span>
+                <span className="text-muted-foreground shrink-0">{formatBytes(pendingFile.size)}</span>
+                <button type="button" onClick={() => setPendingFile(null)} className="ml-auto cursor-pointer">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+            {fileError && <span className="text-destructive">{fileError}</span>}
+          </div>
+        )}
         <div className="flex items-center gap-2 px-3 py-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex shrink-0">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-full cursor-pointer"
+                  disabled={!context?.activeWorkItemId || loading}
+                  onClick={() => {
+                    if (!draft) setDraft("/");
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {context?.activeWorkItemId ? "Attach with /" : "Select a different context to attach items"}
+            </TooltipContent>
+          </Tooltip>
           <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-9 w-9 shrink-0 rounded-full"
-            disabled={!context?.activeWorkItemId || loading}
-            title={context?.activeWorkItemId ? "Attach with /" : "Select a work item to attach items"}
-            onClick={() => {
-              if (!draft) setDraft("/");
-              inputRef.current?.focus();
-            }}
+            type="button" size="icon" variant="ghost"
+            className="h-9 w-9 shrink-0 rounded-full cursor-pointer"
+            disabled={loading || sending}
+            title="Send a file"
+            onClick={() => fileInputRef.current?.click()}
           >
-            <Plus className="h-4 w-4" />
+            <Paperclip className="h-4 w-4" />
           </Button>
           <input
             ref={inputRef}
@@ -349,7 +431,7 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
               }
             }}
             placeholder={
-              attachment
+              attachment || pendingFile
                 ? "Add a message..."
                 : context?.activeWorkItemId
                   ? "Type a message or / to attach..."
@@ -360,9 +442,9 @@ export function ChatPanel({ connectionId, connection, onBack }: ChatPanelProps) 
           />
           <Button
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-full"
+            className="h-9 w-9 shrink-0 rounded-full cursor-pointer"
             onClick={handleSend}
-            disabled={(!draft.trim() && !attachment) || sending || loading || palette.open}
+            disabled={(!draft.trim() && !attachment && !pendingFile) || sending || loading || palette.open}
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>

@@ -41,7 +41,7 @@ export function TabSelector({ active, onChange }: { active: ConnectionTab; onCha
       </div>
 
       {/* Mobile: arrowed cycle switcher */}
-      <div className="flex md:hidden items-center justify-between px-2 pt-2 pb-1">
+      <div className="flex md:hidden items-center justify-between px-2 pt-2 pb-1 pr-11">
         <button onClick={() => cycle(-1)} className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted cursor-pointer">
           <ChevronLeft className="h-4 w-4" />
         </button>

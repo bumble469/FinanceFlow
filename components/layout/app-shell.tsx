@@ -8,7 +8,12 @@ import { getSocket } from "@/lib/socket-client";
 import { useChatStore } from "@/lib/chat-store";
 import { useFinancialStore } from "@/lib/store";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+export function AppShell({ children, noScroll }: { children: React.ReactNode; noScroll?: boolean }) {
+  const pathname = usePathname();
+  const isConnections = noScroll || pathname === "/connections";
   const currentUser = useFinancialStore((s) => s.currentUser);
   const appendMessage = useChatStore((s) => s.appendMessage);
   const markOwnMessagesRead = useChatStore((s) => s.markOwnMessagesRead);
@@ -34,12 +39,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <GlobalSidebar />
-      <div className="flex flex-1 flex-col min-h-0 md:pl-[76px]">
+      <div className="flex flex-1 flex-col min-h-0 md:pl-[76px] overflow-x-hidden">
         <div className="md:hidden">
           <TopNav />
         </div>
-        <main className="flex-1 min-h-0 overflow-y-auto">
-          <div className="mx-auto w-full max-w-7xl px-6 py-8 pb-24 md:pb-8 lg:px-8 h-full">
+        <main
+          className={cn(
+            "flex-1 min-h-0 overflow-x-hidden",
+            isConnections ? "overflow-hidden" : "overflow-y-auto"
+          )}
+        >
+          <div
+            className={cn(
+              "mx-auto w-full max-w-7xl h-full",
+              isConnections
+                ? "p-3 md:p-6 pb-20 md:pb-6 overflow-hidden"
+                : "px-6 py-8 pb-24 md:pb-8 lg:px-8"
+            )}
+          >
             {children}
           </div>
         </main>

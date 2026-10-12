@@ -79,11 +79,11 @@ export function GroupsTab({ tab, onTabChange }: GroupsTabProps) {
   const selected = groups.find((g) => g.workItemId === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border">
+    <div className="flex h-full w-full min-w-0 max-w-full min-h-0 overflow-hidden rounded-2xl border border-border">
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex flex-col min-h-0 border-r border-border bg-card w-full md:w-[340px] shrink-0",
+          "flex flex-col min-h-0 md:border-r border-border bg-card w-full md:w-[340px] md:shrink-0 min-w-0",
           selected && "hidden md:flex"
         )}
       >
@@ -115,7 +115,7 @@ export function GroupsTab({ tab, onTabChange }: GroupsTabProps) {
       </aside>
 
       {/* Main panel */}
-      <div className={cn("flex-1 flex flex-col min-h-0", !selected && "hidden md:flex")}>
+      <div className={cn("flex-1 min-w-0 w-full flex flex-col min-h-0", !selected && "hidden md:flex")}>
         {selected ? (
           <GroupPanel
             workItemId={selected.workItemId}

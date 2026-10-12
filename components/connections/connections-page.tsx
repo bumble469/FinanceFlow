@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Search, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ export function ConnectionsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [typingConnections, setTypingConnections] = useState<Record<string, boolean>>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const isChatTab = tab === "all" || tab === "direct";
   const selectedConnectionIdRef = useRef<string | null>(null);
 
@@ -45,22 +46,32 @@ export function ConnectionsPage() {
   }, [selected]);
 
   useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isFullscreen]);
+
+  // Escape key exits fullscreen
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isFullscreen]);
+
+  useEffect(() => {
     const socket = getSocket();
 
     const handleNewMessage = (payload: { conversationId: string; connectionId: string; message: any }) => {
       setConnections((prev) =>
         prev.map((conn) => {
-          // Find the specific connection that received the message
           if (conn.connectionId === payload.connectionId) {
-            // If the user is currently looking at THIS chat, do not increment the badge
-            if (selectedConnectionIdRef.current === conn.connectionId) {
-              return conn;
-            }
-            // Otherwise, increment the unread count
-            return {
-              ...conn,
-              unreadCount: (conn.unreadCount || 0) + 1,
-            };
+            if (selectedConnectionIdRef.current === conn.connectionId) return conn;
+            return { ...conn, unreadCount: (conn.unreadCount || 0) + 1 };
           }
           return conn;
         })
@@ -70,19 +81,14 @@ export function ConnectionsPage() {
     const handleChatRead = (payload: { connectionId: string }) => {
       setConnections((prev) =>
         prev.map((conn) =>
-          conn.connectionId === payload.connectionId
-            ? { ...conn, unreadCount: 0 } // Force badge to 0
-            : conn
+          conn.connectionId === payload.connectionId ? { ...conn, unreadCount: 0 } : conn
         )
       );
     };
 
     const handleTyping = (payload: { connectionId: string; isTyping: boolean }) => {
-      setTypingConnections((prev) => ({
-        ...prev,
-        [payload.connectionId]: payload.isTyping,
-      }));
-      console.log("typing event received: " + payload.connectionId + payload.isTyping)
+      setTypingConnections((prev) => ({ ...prev, [payload.connectionId]: payload.isTyping }));
+      console.log("typing event received: " + payload.connectionId + payload.isTyping);
     };
 
     socket.on("chat:new-message", handleNewMessage);
@@ -102,7 +108,6 @@ export function ConnectionsPage() {
         method: "GET",
         params: { page, limit: 20, search: search || undefined },
       });
-      // The API now returns unreadCount inside each connection object
       setConnections(res.data.connections || []);
       setPagination(res.data.pagination);
     } catch (err) {
@@ -117,10 +122,7 @@ export function ConnectionsPage() {
   }, [isChatTab, fetchConnections]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
-    }, 350);
+    const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 350);
     return () => clearTimeout(t);
   }, [searchInput]);
 
@@ -140,11 +142,29 @@ export function ConnectionsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border">
+    <div
+      className={cn(
+        "flex overflow-hidden border border-border bg-background min-w-0 max-w-full",
+        isFullscreen
+          ? "fixed inset-0 md:left-[76px] z-50 rounded-none w-full md:w-[calc(100%-76px)]"
+          : "relative h-full w-full rounded-2xl"
+      )}
+    >
+      <button
+        title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+        onClick={() => setIsFullscreen((f) => !f)}
+        className="absolute top-2.5 right-2.5 z-20 flex h-7 w-7 items-center justify-center rounded-md bg-background/80 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer backdrop-blur-sm"
+      >
+        {isFullscreen
+          ? <Minimize2 className="h-3.5 w-3.5" />
+          : <Maximize2 className="h-3.5 w-3.5" />
+        }
+      </button>
+
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex flex-col min-h-0 border-r border-border bg-card w-full md:w-[340px] shrink-0",
+          "flex flex-col min-h-0 md:border-r border-border bg-card w-full md:w-[340px] md:shrink-0 min-w-0",
           selected && "hidden md:flex"
         )}
       >
@@ -204,8 +224,8 @@ export function ConnectionsPage() {
         )}
       </aside>
 
-      {/* Main panel */}
-      <div className={cn("flex-1 flex flex-col min-h-0", !selected && "hidden md:flex")}>
+      {/* Main chat panel */}
+      <div className={cn("flex-1 min-w-0 w-full flex flex-col min-h-0", !selected && "hidden md:flex")}>
         {selected ? (
           <ChatPanel connectionId={selected.connectionId} connection={selected} onBack={() => setSelected(null)} />
         ) : (
