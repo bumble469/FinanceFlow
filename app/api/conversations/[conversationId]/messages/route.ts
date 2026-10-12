@@ -5,6 +5,9 @@ import { getConversationForUser } from "@/lib/conversation-auth";
 import { getPlanAccess } from "@/lib/get-plan-access";
 import { attachEntities, entityKey, resolveEntities } from "@/lib/chat-entities";
 import { emitToUser } from "@/lib/socket-server";
+import { randomUUID } from "crypto";
+import { saveFile } from "@/lib/storage";
+import { validateUpload } from "@/lib/file-preview";
 
 const PAGE_SIZE = 30;
 
@@ -56,12 +59,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
     const conversation = await getConversationForUser(conversationId, user.sub);
     if (!conversation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const { body, entity } = await req.json();
+    let body: unknown;
+    let entity: any = null;
+    let file: File | null = null;
+
+    if ((req.headers.get("content-type") || "").includes("multipart/form-data")) {
+      const fd = await req.formData();
+      body = fd.get("body");
+      const f = fd.get("file");
+      file = f instanceof File ? f : null;
+    } else {
+      ({ body, entity } = await req.json());
+    }
+
     const text = typeof body === "string" ? body.trim() : "";
     const hasEntity = !!entity && typeof entity.type === "string" && typeof entity.id === "string";
 
-    if (!text && !hasEntity) {
+    if (!text && !hasEntity && !file) {
       return NextResponse.json({ error: "Message body is required" }, { status: 400 });
+    }
+    if (file) {
+      const problem = validateUpload(file);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
     }
 
     let entityType: string | null = null;
@@ -85,6 +104,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
       entityId = entity.id;
     }
 
+    let attachmentData:
+      | { attachmentUrl: string; attachmentName: string; attachmentMime: string; attachmentSize: number }
+      | null = null;
+
+    if (file) {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const { url } = await saveFile(`chat/${conversationId}/${randomUUID()}-${safe}`, file);
+      attachmentData = {
+        attachmentUrl: url,
+        attachmentName: file.name,
+        attachmentMime: file.type || "application/octet-stream",
+        attachmentSize: file.size,
+      };
+    }
+
     const message = await prisma.message.create({
       data: {
         conversationId,
@@ -93,6 +127,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
         workItemId: conversation.activeWorkItemId ?? null,
         entityType,
         entityId,
+        ...(attachmentData ?? {}),
       },
       include: MESSAGE_INCLUDE,
     });

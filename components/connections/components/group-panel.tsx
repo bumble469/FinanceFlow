@@ -57,7 +57,7 @@ function GroupContextCard({ workItemId, name, type }: { workItemId: string; name
           milestones: data.milestones?.length ?? 0,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [workItemId]);
 
@@ -416,9 +416,8 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
               <Fragment key={m.id}>
                 <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                   <div
-                    className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${
-                      isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-secondary text-foreground rounded-bl-sm"
-                    }`}
+                    className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-secondary text-foreground rounded-bl-sm"
+                      }`}
                   >
                     {!isOwn && (() => {
                       const senderMember = header.members.find((member) => member.userId === m.senderId);
@@ -508,15 +507,15 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
               isReadOnly
                 ? "This group is read-only"
                 : attachment
-                ? "Add a message..."
-                : "Type a message, / to attach, @ to mention..."
+                  ? "Add a message..."
+                  : "Type a message, / to attach, @ to mention..."
             }
             disabled={isReadOnly}
             className="flex-1 min-w-0 rounded-full border border-border bg-secondary/40 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
           />
           <Button
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-full"
+            className="h-9 w-9 shrink-0 rounded-full cursor-pointer"
             onClick={handleSend}
             disabled={(!draft.trim() && !attachment) || sending || palette.open || isReadOnly}
           >

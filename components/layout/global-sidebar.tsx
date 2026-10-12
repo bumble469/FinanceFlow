@@ -1,11 +1,14 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Home, LayoutGrid, Cable, Settings, Bell } from "lucide-react";
+import { Home, LayoutGrid, Cable, Settings, Bell, Sparkles } from "lucide-react";   // add Sparkles
+import { useWhatsNew } from "@/hooks/use-whats-new";
+import { WhatsNewDialog } from "@/components/whats-new-dialog";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { authClient } from "@/lib/auth-client";
 import { useFinancialStore } from "@/lib/store";
 import { useNotifications } from "@/hooks/use-notifications";
 import { NotificationsDialog } from "@/components/dashboard/dialogs/notifications-dialog";
@@ -21,7 +24,26 @@ export function GlobalSidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const currentUser = useFinancialStore((s) => s.currentUser);
+    const setCurrentUser = useFinancialStore((s) => s.setCurrentUser);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
+    const { hasUnseen, markSeen } = useWhatsNew();
+
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        authClient
+            .request("/api/settings/profile")
+            .then((res) => {
+                const p = res.data.data;
+                setCurrentUser({
+                    ...currentUser,
+                    name: p.name ?? undefined,
+                    image: p.image,
+                    headline: p.headline,
+                });
+            })
+            .catch(() => {});
+    }, [currentUser?.id]);
 
     const { unreadCount, unreadGeneral, unreadPersonal, general, personal, loading, fetchTab, markRead, markAllRead } = useNotifications();
 
@@ -51,6 +73,20 @@ export function GlobalSidebar() {
                 )}
             </button>
 
+            <button
+                title="What's new"
+                onClick={() => {
+                    setIsWhatsNewOpen(true);
+                    markSeen();
+                }}
+                className="relative mt-4 flex h-10 w-10 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground cursor-pointer transition-colors"
+            >
+                <Sparkles className="h-4.5 w-4.5" />
+                {hasUnseen && (
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-sidebar" />
+                )}
+            </button>
+
             <nav className="flex flex-1 flex-col items-center justify-center gap-2">
                 {NAV_ITEMS.map((item) => {
                     const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -73,17 +109,6 @@ export function GlobalSidebar() {
                 })}
             </nav>
 
-            <button
-                title={currentUser?.name || "Account"}
-                onClick={() => router.push("/settings")}
-                className="cursor-pointer"
-            >
-                <Avatar className="h-9 w-9 border border-border">
-                    <AvatarFallback className="bg-primary/20 text-primary text-sm font-medium">
-                        {initials}
-                    </AvatarFallback>
-                </Avatar>
-            </button>
 
             <NotificationsDialog
                 open={isNotificationsOpen}
@@ -98,6 +123,8 @@ export function GlobalSidebar() {
                 onMarkRead={markRead}
                 onMarkAllRead={markAllRead}
             />
+
+            <WhatsNewDialog open={isWhatsNewOpen} onOpenChange={setIsWhatsNewOpen} />
         </aside>
     );
 }
