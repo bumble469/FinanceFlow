@@ -12,7 +12,7 @@ export const ENTITY_META: Record<EntityType, { label: string; Icon: LucideIcon; 
   department: { label: "Department", Icon: Building2, accent: "text-orange-500" },
   expense: { label: "Expense", Icon: Receipt, accent: "text-red-500" },
   document: { label: "Document", Icon: FileText, accent: "text-sky-500" },
-  income: { label: "Income", Icon: Wallet, accent: "text-emerald-500" },
+  income: { label: "Income", Icon: Wallet, accent: "text-primary-500" },
 };
 
 function formatDue(iso: string | null) {
@@ -36,9 +36,9 @@ export function EntityCard({ entity, compact, onRemove, onClick, onGoTo, isOwn }
 
   const base = cn(
     "relative w-full rounded-xl border text-left",
-    isOwn ? "bg-[#027788] text-white border-primary-foreground/20" : "border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5",
+    isOwn ? "bg-[#027788] text-foreground border-primary-foreground/20" : "border-black/10 dark:border-border bg-background/5 dark:bg-foreground/5",
     compact ? "px-3 py-2" : "px-3 py-2.5",
-    onClick && "cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+    onClick && "cursor-pointer hover:bg-background/10 dark:hover:bg-foreground/10 transition-colors"
   );
 
   const actions =
@@ -53,7 +53,7 @@ export function EntityCard({ entity, compact, onRemove, onClick, onGoTo, isOwn }
               e.stopPropagation();
               onGoTo();
             }}
-            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/10 dark:hover:bg-foreground/10 cursor-pointer"
           >
             <ArrowUpRight className="h-3.5 w-3.5" />
           </button>
@@ -66,7 +66,7 @@ export function EntityCard({ entity, compact, onRemove, onClick, onGoTo, isOwn }
               e.stopPropagation();
               onRemove();
             }}
-            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/10 dark:hover:bg-foreground/10 cursor-pointer"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -96,7 +96,7 @@ export function EntityCard({ entity, compact, onRemove, onClick, onGoTo, isOwn }
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] opacity-70">
         {due && <span>Due: {due}</span>}
         {entity.status && (
-          <span className="rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.5 font-medium">
+          <span className="rounded-full bg-background/10 dark:bg-foreground/10 px-1.5 py-0.5 font-medium">
             {humanize(entity.status)}
           </span>
         )}

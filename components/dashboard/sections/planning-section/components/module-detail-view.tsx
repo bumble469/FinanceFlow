@@ -145,7 +145,7 @@ export function ModuleDetailView({
         <Button
           size="sm"
           variant="outline"
-          className="w-full gap-2 border-dashed cursor-pointer hover:text-gray-400"
+          className="w-full gap-2 border-dashed cursor-pointer hover:text-muted-foreground"
           onClick={() => setTaskDialog({ open: true })}
         >
           <Plus className="h-4 w-4" />

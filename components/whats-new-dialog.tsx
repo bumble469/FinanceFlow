@@ -6,8 +6,8 @@ import { changelog } from "@/lib/changeLog";
 const TAG_STYLES: Record<string, { icon: LucideIcon; badge: string; dot: string }> = {
   New: {
     icon: Plus,
-    badge: "bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:text-emerald-400",
-    dot: "bg-emerald-500",
+    badge: "bg-primary-500/10 text-primary-600 ring-emerald-500/20 dark:text-primary-400",
+    dot: "bg-primary-500",
   },
   Improved: {
     icon: TrendingUp,

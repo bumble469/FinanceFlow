@@ -166,7 +166,7 @@ export function OneToOneTab() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-9 px-3.5 text-muted-foreground hover:!bg-red-900 hover:!text-white cursor-pointer"
+                      className="h-9 px-3.5 text-muted-foreground hover:!bg-red-900 hover:!text-foreground cursor-pointer"
                       onClick={() => setPendingRemoval(c)}
                       disabled={isRemoving}
                     >

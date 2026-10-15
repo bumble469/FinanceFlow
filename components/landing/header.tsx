@@ -125,7 +125,7 @@ export function LandingHeader() {
 
       {/* Mobile Navigation Drawer */}
       {isOpen && (
-        <div className="md:hidden border-t border-white/10 bg-background/95 backdrop-blur-xl px-6 py-5">
+        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl px-6 py-5">
           <nav className="flex flex-col gap-4">
             {navLinks.map((link) => {
               const isActive = activeSection === link.href
@@ -148,7 +148,7 @@ export function LandingHeader() {
               )
             })}
 
-            <div className="flex flex-col gap-3 pt-4 border-t border-white/10 mt-2">
+            <div className="flex flex-col gap-3 pt-4 border-t border-border mt-2">
               <Link
                 href="/login"
                 className="text-center py-2 text-sm font-medium text-muted-foreground hover:text-foreground"

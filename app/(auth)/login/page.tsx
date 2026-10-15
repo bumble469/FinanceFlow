@@ -287,7 +287,7 @@ export default function LoginPage() {
             variant="outline"
             onClick={handleGoogleLogin}
             disabled={loading || isSuccessState}
-            className="w-full h-[clamp(2.25rem,4vh,2.75rem)] text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] rounded-xl border border-border/60 bg-secondary/20 hover:bg-secondary/50 text-foreground font-medium hover:text-gray-400 flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
+            className="w-full h-[clamp(2.25rem,4vh,2.75rem)] text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] rounded-xl border border-border/60 bg-secondary/20 hover:bg-secondary/50 text-foreground font-medium hover:text-muted-foreground flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
           >
             <FcGoogle className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>With Google</span>
