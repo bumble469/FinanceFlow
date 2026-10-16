@@ -8,6 +8,7 @@ import { LogoutSection } from "@/components/settings/logout-section";
 import { ProfileSection, PreferencesSection } from "@/components/settings/profile-section";
 import { AppearanceSection } from "@/components/settings/appearance-section";
 import { AccountDetailsSection, SecuritySection, DangerZoneSection } from "@/components/settings/account-section";
+import { TwoFactorSection } from "@/components/settings/two-factor-section";
 import { authClient } from "@/lib/auth-client";
 import type { AccountSubscription } from "@/lib/types";
 import Link from "next/link";
@@ -60,126 +61,127 @@ export function SettingsTabs() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="space-y-1 sm:space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your account and preferences</p>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground">Manage your account and preferences</p>
+      </div>
 
-        <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full sm:w-auto">
-            <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
-            <TabsTrigger value="account" className="cursor-pointer">Account</TabsTrigger>
-            <TabsTrigger value="appearance" className="cursor-pointer">Appearance</TabsTrigger>
-            <TabsTrigger value="subscription" className="cursor-pointer">Subscription</TabsTrigger>
-            <TabsTrigger value="connections" className="cursor-pointer">Connections</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid grid-cols-5 w-full sm:w-auto">
+          <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
+          <TabsTrigger value="account" className="cursor-pointer">Account</TabsTrigger>
+          <TabsTrigger value="appearance" className="cursor-pointer">Appearance</TabsTrigger>
+          <TabsTrigger value="subscription" className="cursor-pointer">Subscription</TabsTrigger>
+          <TabsTrigger value="connections" className="cursor-pointer">Connections</TabsTrigger>
+        </TabsList>
 
-          {/* GENERAL TAB */}
-          <TabsContent value="general" className="space-y-6">
-            <ProfileSection />
-            <PreferencesSection />
-            <LogoutSection />
-          </TabsContent>
+        {/* GENERAL TAB */}
+        <TabsContent value="general" className="space-y-6">
+          <ProfileSection />
+          <PreferencesSection />
+          <LogoutSection />
+        </TabsContent>
 
-          {/* ACCOUNT TAB */}
-          <TabsContent value="account" className="space-y-6">
-            <AccountDetailsSection />
-            <SecuritySection />
-            <DangerZoneSection />
-          </TabsContent>
+        {/* ACCOUNT TAB */}
+        <TabsContent value="account" className="space-y-6">
+          <AccountDetailsSection />
+          <SecuritySection />
+          <TwoFactorSection />
+          <DangerZoneSection />
+        </TabsContent>
 
-          {/* APPEARANCE TAB */}
-          <TabsContent value="appearance" className="space-y-6">
-            <AppearanceSection />
-          </TabsContent>
+        {/* APPEARANCE TAB */}
+        <TabsContent value="appearance" className="space-y-6">
+          <AppearanceSection />
+        </TabsContent>
 
-          {/* SUBSCRIPTION TAB */}
-          <TabsContent value="subscription" className="space-y-6">
-            <Card className="border border-border bg-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground">Subscription</h2>
-                <Link href="/settings/subscription-plan" className="text-sm text-primary hover:underline font-medium">
-                  Change plan →
+        {/* SUBSCRIPTION TAB */}
+        <TabsContent value="subscription" className="space-y-6">
+          <Card className="border border-border bg-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Subscription</h2>
+              <Link href="/settings/subscription-plan" className="text-sm text-primary hover:underline font-medium">
+                Change plan →
+              </Link>
+            </div>
+
+            {loadingSub ? (
+              <p className="text-sm text-muted-foreground">Loading subscription details...</p>
+            ) : !subscription ? (
+              <p className="text-muted-foreground">
+                No active subscription found.{" "}
+                <Link href="/settings/subscription-plan" className="text-primary hover:underline">
+                  Choose a plan
                 </Link>
-              </div>
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <p className="text-lg font-semibold text-foreground">{subscription.plan.name}</p>
+                  <Badge variant={STATUS_VARIANT[subscription.status] ?? "outline"}>
+                    {subscription.status}
+                  </Badge>
+                  {subscription.cancelAtPeriodEnd && (
+                    <Badge variant="outline">Cancels at period end</Badge>
+                  )}
+                </div>
 
-              {loadingSub ? (
-                <p className="text-sm text-muted-foreground">Loading subscription details...</p>
-              ) : !subscription ? (
-                <p className="text-muted-foreground">
-                  No active subscription found.{" "}
-                  <Link href="/settings/subscription-plan" className="text-primary hover:underline">
-                    Choose a plan
-                  </Link>
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <p className="text-lg font-semibold text-foreground">{subscription.plan.name}</p>
-                    <Badge variant={STATUS_VARIANT[subscription.status] ?? "outline"}>
-                      {subscription.status}
-                    </Badge>
-                    {subscription.cancelAtPeriodEnd && (
-                      <Badge variant="outline">Cancels at period end</Badge>
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Billing</p>
+                    <p className="text-foreground font-medium">
+                      {subscription.amount === 0
+                        ? "Free"
+                        : `₹${subscription.amount.toLocaleString("en-IN")} / ${subscription.billingInterval.toLowerCase().replace("_", "-")}`}
+                    </p>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Billing</p>
-                      <p className="text-foreground font-medium">
-                        {subscription.amount === 0
-                          ? "Free"
-                          : `₹${subscription.amount.toLocaleString("en-IN")} / ${subscription.billingInterval.toLowerCase().replace("_", "-")}`}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Claimed on</p>
-                      <p className="text-foreground font-medium">{formatDate(subscription.startedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Current period started</p>
-                      <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodStart)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Valid till</p>
-                      <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground">Claimed on</p>
+                    <p className="text-foreground font-medium">{formatDate(subscription.startedAt)}</p>
                   </div>
-
-                  <div className="pt-4 border-t border-border grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Projects</p>
-                      <p className="text-foreground font-medium">{subscription.plan.maxProjects ?? "Unlimited"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Events</p>
-                      <p className="text-foreground font-medium">{subscription.plan.maxEvents ?? "Unlimited"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Total work items</p>
-                      <p className="text-foreground font-medium">{subscription.plan.maxTotalWorkItems ?? "Unlimited"}</p>
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground">Current period started</p>
+                    <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodStart)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Valid till</p>
+                    <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
                   </div>
                 </div>
-              )}
-            </Card>
-          </TabsContent>
-          <TabsContent value="connections" className="space-y-6">
-            <div className="flex items-center justify-between py-4 border-y border-border mb-4">
-              <div>
-                <h3 className="text-sm font-medium text-foreground">Auto-connect with Coworkers</h3>
-                <p className="text-sm text-muted-foreground">
-                  Automatically connect with people added to your plans and work items.
-                </p>
+
+                <div className="pt-4 border-t border-border grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Projects</p>
+                    <p className="text-foreground font-medium">{subscription.plan.maxProjects ?? "Unlimited"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Events</p>
+                    <p className="text-foreground font-medium">{subscription.plan.maxEvents ?? "Unlimited"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total work items</p>
+                    <p className="text-foreground font-medium">{subscription.plan.maxTotalWorkItems ?? "Unlimited"}</p>
+                  </div>
+                </div>
               </div>
-              <Switch
-                className="cursor-pointer"
-                checked={autoConnectWithCoworkers}
-                onCheckedChange={handleToggleAutoConnect}
-              />
+            )}
+          </Card>
+        </TabsContent>
+        <TabsContent value="connections" className="space-y-6">
+          <div className="flex items-center justify-between py-4 border-y border-border mb-4">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Auto-connect with Coworkers</h3>
+              <p className="text-sm text-muted-foreground">
+                Automatically connect with people added to your plans and work items.
+              </p>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+            <Switch
+              className="cursor-pointer"
+              checked={autoConnectWithCoworkers}
+              onCheckedChange={handleToggleAutoConnect}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

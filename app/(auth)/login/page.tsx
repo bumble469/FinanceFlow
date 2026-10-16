@@ -18,14 +18,9 @@ interface LoginFormValues {
 
 interface LoginApiResponse {
   success: boolean
-  data?: {
-    accessToken: string
-    user: {
-      id: string
-      email: string
-      name: string | null
-    }
-  }
+  requiresTwoFactor?: boolean
+  method?: 'EMAIL' | 'SMS'
+  data?: { accessToken: string; user: { id: string; email: string; name: string | null } }
   error?: string
   errors?: Record<string, string>
 }
@@ -96,13 +91,17 @@ export default function LoginPage() {
         return
       }
 
+      if (result.requiresTwoFactor) {
+        router.push('/two-factor/verify')
+        return
+      }
       setTriggerSuccess((prev) => prev + 1)
       setIsSuccessState(true)
 
-      // 1.5s delay to show success animation
       setTimeout(() => {
         router.push('/')
       }, 1500)
+
     } catch (err) {
       setErrors({ general: 'Something went wrong. Please try again.' })
       setTriggerFail((prev) => prev + 1)

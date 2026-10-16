@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import {
   generateAccessToken,
   generateRefreshToken,
+  generateTwoFactorPendingToken,
   REFRESH_TOKEN_TTL,
 } from '@/lib/jwt';
 
@@ -56,7 +57,12 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
+    if (!payload.email_verified) {
+      return NextResponse.json(
+        { success: false, error: 'Google email is not verified' },
+        { status: 401 }
+      );
+    }
     const providerAccountId = payload.sub;
     const email = payload.email.toLowerCase();
     const name = payload.name || null;
@@ -116,6 +122,24 @@ export async function GET(request: NextRequest) {
           id_token: tokenData.id_token,
         },
       });
+    }
+    const twoFactor = await prisma.twoFactorSettings.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (twoFactor?.enabled) {
+      const pendingToken = await generateTwoFactorPendingToken(user.id);
+      const res = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/two-factor/verify`);
+      res.cookies.set({
+        name: 'pending_2fa',
+        value: pendingToken,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 5 * 60,
+        path: '/',
+      });
+      return res;
     }
 
     const accessToken = await generateAccessToken({

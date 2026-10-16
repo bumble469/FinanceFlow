@@ -5,7 +5,9 @@ import {
   generateAccessToken,
   generateRefreshToken,
   REFRESH_TOKEN_TTL,
+  generateTwoFactorPendingToken,
 } from '@/lib/jwt';
+import { getOtpDestination } from '@/lib/two-factor';
 import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
         name: true,
         password: true,
         role: true,
+        twoFactor: true,
       },
     });
 
@@ -64,6 +67,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (user.twoFactor?.enabled) {
+      const pendingToken = await generateTwoFactorPendingToken(user.id);
+
+      const response = NextResponse.json(
+        {
+          success: true,
+          requiresTwoFactor: true,
+          user: { id: user.id, email: user.email, name: user.name },
+          method: user.twoFactor.method,
+          destination: getOtpDestination(user.twoFactor),
+        },
+        { status: 200 }
+      );
+
+      response.cookies.set({
+        name: 'pending_2fa',
+        value: pendingToken,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 5 * 60,
+        path: '/',
+      });
+      return response;
+    }
+
     await prisma.refreshToken.updateMany({
       where: {
         userId: user.id,
@@ -73,7 +102,7 @@ export async function POST(request: NextRequest) {
         revokedAt: new Date(),
       },
     });
-  
+
 
     const accessToken = await generateAccessToken({
       sub: user.id,

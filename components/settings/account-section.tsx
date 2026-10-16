@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 const TYPES = [
   { value: "INDIVIDUAL", label: "Individual" },
   { value: "COMPANY", label: "Company" },
-  { value: "CLUB", label: "Club" },
 ];
 
 const errMsg = (err: any, fallback: string) => err?.response?.data?.error || fallback;

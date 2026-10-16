@@ -13,11 +13,11 @@ export async function sendEmail({
   toName?: string | null;
   subject: string;
   htmlContent: string;
-}) {
+}): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
     console.error("[email] BREVO_API_KEY not set, skipping email send");
-    return;
+    return false;
   }
 
   try {
@@ -39,9 +39,12 @@ export async function sendEmail({
     if (!res.ok) {
       const text = await res.text();
       console.error("[email] Brevo send failed:", res.status, text);
+      return false;
     }
+    return true;
   } catch (err) {
     console.error("[email] Brevo send error:", err);
+    return false;
   }
 }
 

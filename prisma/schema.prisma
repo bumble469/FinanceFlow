@@ -245,6 +245,11 @@ enum PaymentProvider {
   MANUAL
 }
 
+enum TwoFactorMethod {
+  EMAIL
+  SMS
+}
+
 //////////////////////
 // AUTH / IDENTITY (unchanged)
 //////////////////////
@@ -281,11 +286,59 @@ model User {
   initiatedConnections Connection[] @relation("ConnectionsInitiated")
   receivedConnections  Connection[] @relation("ConnectionsReceived")
 
+  twoFactor        TwoFactorSettings?
+  backupCodes      TwoFactorBackupCode[]
+  challenges       TwoFactorChallenge[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model TwoFactorSettings {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  enabled       Boolean  @default(false)
+  method        TwoFactorMethod @default(EMAIL)
+  secret        String?
+  recoveryEmail String?
+  recoveryPhone String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_settings")
+}
+
+model TwoFactorBackupCode {
+  id        String   @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor_backup_codes")
+}
+
+model TwoFactorChallenge {
+  id        String   @id @default(uuid())
+  userId    String
+  method    TwoFactorMethod
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor_challenges")
 }
 
 model OAuthAccount {
