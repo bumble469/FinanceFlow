@@ -711,7 +711,7 @@ export function PlanningSection({ permissions }: { permissions: PlanPermissions 
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 h-8 text-xs font-medium hover:text-gray-400 cursor-pointer"
+                  className="gap-1.5 h-8 text-xs font-medium hover:text-muted-foreground cursor-pointer"
                   onClick={() => { setEditingMilestone(null); setMilestoneDialogOpen(true); }}
                 >
                   <Plus className="h-3.5 w-3.5" />

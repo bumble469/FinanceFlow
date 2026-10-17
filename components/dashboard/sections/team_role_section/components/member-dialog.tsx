@@ -412,7 +412,7 @@ export function AddEditMemberDialog({
                           type="button"
                           onClick={() => toggleDepartment(d.id)}
                           className={`rounded border p-2 text-sm transition ${selected
-                            ? "bg-primary text-white"
+                            ? "bg-primary text-foreground"
                             : "bg-background hover:bg-muted"
                             }`}
                         >

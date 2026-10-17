@@ -59,7 +59,7 @@ export function LogoutSection() {
             className="
                     flex items-center gap-2 cursor-pointer
                     hover:bg-gray-200
-                    dark:hover:bg-gray-700
+                    dark:hover:bg-muted
                     hover:text-foreground
                 "
             onClick={() => setOpenDialog('logout')}

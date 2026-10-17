@@ -45,7 +45,7 @@ export function HeroSection() {
             <Button
               asChild
               size="lg"
-              className="w-full sm:w-auto h-12 px-7 rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 transition-all active:scale-95 shadow-lg text-sm sm:text-base cursor-pointer gap-2"
+              className="w-full sm:w-auto h-12 px-7 rounded-lg bg-foreground text-background font-semibold hover:bg-foreground/90 transition-all active:scale-95 shadow-lg text-sm sm:text-base cursor-pointer gap-2"
             >
               <Link href="/signup">
                 Get Started Free
@@ -57,7 +57,7 @@ export function HeroSection() {
               asChild
               size="lg"
               variant="outline"
-              className="w-full sm:w-auto h-12 px-7 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 text-white font-medium border border-zinc-700/60 hover:border-zinc-500 transition-all active:scale-95 text-sm sm:text-base cursor-pointer"
+              className="w-full sm:w-auto h-12 px-7 rounded-lg bg-card/80 hover:bg-muted text-foreground font-medium border border-border hover:border-primary/40 transition-all active:scale-95 text-sm sm:text-base cursor-pointer"
             >
               <Link href="#why">See Why</Link>
             </Button>

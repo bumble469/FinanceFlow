@@ -46,7 +46,7 @@ export function LandingHeader() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/25 backdrop-blur-md supports-[backdrop-filter]:bg-background/20 transition-all">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/25 backdrop-blur-md supports-[backdrop-filter]:bg-background/20 transition-all">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 lg:px-8">
         
         {/* Left: Logo + Navigation grouped together */}
@@ -107,7 +107,7 @@ export function LandingHeader() {
 
           <Link
             href="/signup"
-            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-all hover:bg-zinc-200 active:scale-95 shadow-sm"
+            className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition-all hover:bg-foreground/90 active:scale-95 shadow-sm"
           >
             Sign Up
           </Link>
@@ -125,7 +125,7 @@ export function LandingHeader() {
 
       {/* Mobile Navigation Drawer */}
       {isOpen && (
-        <div className="md:hidden border-t border-white/10 bg-background/95 backdrop-blur-xl px-6 py-5">
+        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl px-6 py-5">
           <nav className="flex flex-col gap-4">
             {navLinks.map((link) => {
               const isActive = activeSection === link.href
@@ -148,7 +148,7 @@ export function LandingHeader() {
               )
             })}
 
-            <div className="flex flex-col gap-3 pt-4 border-t border-white/10 mt-2">
+            <div className="flex flex-col gap-3 pt-4 border-t border-border mt-2">
               <Link
                 href="/login"
                 className="text-center py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -158,7 +158,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 href="/signup"
-                className="rounded-lg bg-white py-2.5 text-center text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
+                className="rounded-lg bg-foreground py-2.5 text-center text-sm font-semibold text-background hover:bg-foreground/90 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 Sign Up

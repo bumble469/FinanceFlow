@@ -359,10 +359,10 @@ export function MilestoneDialog({
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="cursor-pointer hover:text-gray-400">
+            <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="cursor-pointer hover:text-muted-foreground">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || locked} className="cursor-pointer hover:text-gray-100">
+            <Button onClick={handleSubmit} disabled={isSubmitting || locked} className="cursor-pointer hover:text-foreground">
               {isSubmitting
                 ? editing ? "Updating..." : "Adding..."
                 : editing ? "Update milestone" : "Add milestone"}

@@ -54,14 +54,45 @@ export function ConnectionsPage() {
     return () => { document.body.style.overflow = ""; };
   }, [isFullscreen]);
 
-  // Escape key exits fullscreen
+  const exitFullscreen = useCallback(async () => {
+    setIsFullscreen(false);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { }
+    }
+  }, []);
+
+  const enterFullscreen = useCallback(async () => {
+    setIsFullscreen(true); // CSS fullscreen always applies (fallback)
+    try {
+      // must run inside the click handler; no-op where unsupported (e.g. iPhone Safari)
+      await document.documentElement.requestFullscreen?.();
+    } catch { }
+  }, []);
+
+  const toggleFullscreen = () => (isFullscreen ? exitFullscreen() : enterFullscreen());
+
+  // Esc/F11 exits real fullscreen without telling React, so sync state back
+  useEffect(() => {
+    const onChange = () => { if (!document.fullscreenElement) setIsFullscreen(false); };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  // leaving the page while fullscreen shouldn't leave the browser stuck in it
+  useEffect(() => () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+  }, []);
+
+  // Esc for the CSS fallback (in real fullscreen the browser handles Esc itself)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isFullscreen) setIsFullscreen(false);
+      if (e.key !== "Escape" || !isFullscreen) return;
+      if (document.querySelector('[role="dialog"]')) return; // let an open dialog close first
+      exitFullscreen();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isFullscreen]);
+  }, [isFullscreen, exitFullscreen]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -126,16 +157,41 @@ export function ConnectionsPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const shell = cn(
+    "min-w-0 max-w-full bg-background",
+    isFullscreen
+      ? "fixed inset-0 md:left-[76px] z-50 w-full md:w-[calc(100%-76px)]"
+      : "relative h-full w-full"
+  );
+
+  const fullscreenButton = (
+    <button
+      title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+      onClick={toggleFullscreen}
+      className="absolute top-2.5 right-2.5 z-20 flex h-7 w-7 items-center justify-center rounded-md bg-background/80 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer backdrop-blur-sm"
+    >
+      {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+    </button>
+  );
+
   if (tab === "groups") {
-    return <GroupsTab tab={tab} onTabChange={setTab} />;
+    return (
+      <div className={shell}>
+        {fullscreenButton}
+        <GroupsTab tab={tab} onTabChange={setTab} isFullscreen={isFullscreen} />
+      </div>
+    );
   }
 
   if (tab === "requests") {
     return (
-      <div className="flex flex-col h-full min-h-0">
-        <TabSelector active={tab} onChange={setTab} />
-        <div className="flex-1 overflow-y-auto min-h-0 p-4">
-          <RequestsTab />
+      <div className={shell}>
+        {fullscreenButton}
+        <div className="flex flex-col h-full min-h-0">
+          <TabSelector active={tab} onChange={setTab} />
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
+            <RequestsTab />
+          </div>
         </div>
       </div>
     );

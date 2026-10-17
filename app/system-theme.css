@@ -1,0 +1,47 @@
+/*
+ * "System" theme: still follows the OS (light/dark), but uses a neutral
+ * greyish palette so it looks different from the pure Light and Dark themes.
+ * Applied when <html> has the `theme-system` class (see theme-provider.tsx).
+ */
+
+/* System + OS light -> soft grey */
+html.theme-system {
+  --background: oklch(0.9 0.003 250);
+  --foreground: oklch(0.22 0.005 250);
+  --card: oklch(0.94 0.003 250);
+  --card-foreground: oklch(0.22 0.005 250);
+  --popover: oklch(0.94 0.003 250);
+  --popover-foreground: oklch(0.22 0.005 250);
+  --secondary: oklch(0.86 0.004 250);
+  --secondary-foreground: oklch(0.22 0.005 250);
+  --muted: oklch(0.86 0.004 250);
+  --muted-foreground: oklch(0.45 0.005 250);
+  --border: oklch(0.8 0.004 250);
+  --input: oklch(0.83 0.004 250);
+  --sidebar: oklch(0.87 0.003 250);
+  --sidebar-foreground: oklch(0.22 0.005 250);
+  --sidebar-accent: oklch(0.82 0.004 250);
+  --sidebar-accent-foreground: oklch(0.22 0.005 250);
+  --sidebar-border: oklch(0.8 0.004 250);
+}
+
+/* System + OS dark -> charcoal grey (lighter than the pure Dark theme) */
+html.dark.theme-system {
+  --background: oklch(0.28 0.004 250);
+  --foreground: oklch(0.93 0.002 250);
+  --card: oklch(0.33 0.004 250);
+  --card-foreground: oklch(0.93 0.002 250);
+  --popover: oklch(0.33 0.004 250);
+  --popover-foreground: oklch(0.93 0.002 250);
+  --secondary: oklch(0.38 0.004 250);
+  --secondary-foreground: oklch(0.93 0.002 250);
+  --muted: oklch(0.38 0.004 250);
+  --muted-foreground: oklch(0.72 0.003 250);
+  --border: oklch(0.44 0.004 250);
+  --input: oklch(0.4 0.004 250);
+  --sidebar: oklch(0.25 0.004 250);
+  --sidebar-foreground: oklch(0.93 0.002 250);
+  --sidebar-accent: oklch(0.38 0.004 250);
+  --sidebar-accent-foreground: oklch(0.93 0.002 250);
+  --sidebar-border: oklch(0.44 0.004 250);
+}

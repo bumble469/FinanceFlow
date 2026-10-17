@@ -20,7 +20,7 @@ export function NotificationBell({ planId }: { planId: string | undefined }) {
       >
         <Bell className="h-4.5 w-4.5 text-foreground" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-foreground">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}

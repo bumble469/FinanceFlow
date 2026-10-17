@@ -79,7 +79,7 @@ export function DepartmentListView({
               <Button
                 size="sm"
                 variant="outline"
-                className="ml-2 gap-1.5 text-xs hover:bg-muted/40 hover:text-gray-400 cursor-pointer hover:border-muted"
+                className="ml-2 gap-1.5 text-xs hover:bg-muted/40 hover:text-muted-foreground cursor-pointer hover:border-muted"
                 onClick={() => onDrillDown(d)}
               >
                 View

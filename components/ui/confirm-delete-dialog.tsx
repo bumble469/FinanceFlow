@@ -41,7 +41,7 @@ export function ConfirmDeleteDialog({
 
         {/* FOOTER */}
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setOpen(false)} className="cursor-pointer hover:text-gray-500">
+          <AlertDialogCancel onClick={() => setOpen(false)} className="cursor-pointer hover:text-muted-foreground">
             Cancel
           </AlertDialogCancel>
 
@@ -50,7 +50,7 @@ export function ConfirmDeleteDialog({
               onConfirm();
               setOpen(false);
             }}
-            className="bg-red-600 hover:bg-red-800 text-white cursor-pointer"
+            className="bg-red-600 hover:bg-red-800 text-foreground cursor-pointer"
           >
             Delete
           </AlertDialogAction>

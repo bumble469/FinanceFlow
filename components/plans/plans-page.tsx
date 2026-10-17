@@ -153,7 +153,7 @@ export function PlansPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader label="Loading plans..."/>
+        <Loader label="Loading plans..." />
       </div>
     );
   }
@@ -178,12 +178,10 @@ export function PlansPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Plans
-          </h1>
-          <p className="text-muted-foreground">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Plans</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Manage plans for {account?.name}
           </p>
         </div>
@@ -212,35 +210,24 @@ export function PlansPage() {
       </div>
 
       <Tabs defaultValue="my-plans" className="space-y-6">
-        <TabsList>
-          <TabsTrigger
-            value="my-plans"
-            className="gap-2 cursor-pointer"
-          >
-            My Plans
-            <Badge variant="secondary">{plans.length}</Badge>
-          </TabsTrigger>
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="w-max">
+            <TabsTrigger value="my-plans" className="shrink-0 gap-2 px-3 cursor-pointer">
+              My Plans
+              <Badge variant="secondary">{plans.length}</Badge>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="collaborations"
-            className="gap-2 cursor-pointer"
-          >
-            Collaborations
-            <Badge variant="secondary">
-              {collaborations.length}
-            </Badge>
-          </TabsTrigger>
+            <TabsTrigger value="collaborations" className="shrink-0 gap-2 px-3 cursor-pointer">
+              Collaborations
+              <Badge variant="secondary">{collaborations.length}</Badge>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="invitations"
-            className="gap-2 cursor-pointer"
-          >
-            Invitations
-            <Badge variant="secondary">
-              {invitations.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger value="invitations" className="shrink-0 gap-2 px-3 cursor-pointer">
+              Invitations
+              <Badge variant="secondary">{invitations.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="my-plans">
           {renderPlans(plans, "No plans created yet.", true)}

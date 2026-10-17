@@ -22,9 +22,10 @@ interface GroupSummary {
 interface GroupsTabProps {
   tab: ConnectionTab;
   onTabChange: (t: ConnectionTab) => void;
+  isFullscreen?: boolean;
 }
 
-export function GroupsTab({ tab, onTabChange }: GroupsTabProps) {
+export function GroupsTab({ tab, onTabChange, isFullscreen = false }: GroupsTabProps) {
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -79,8 +80,12 @@ export function GroupsTab({ tab, onTabChange }: GroupsTabProps) {
   const selected = groups.find((g) => g.workItemId === selectedId) ?? null;
 
   return (
-    <div className="flex h-full w-full min-w-0 max-w-full min-h-0 overflow-hidden rounded-2xl border border-border">
-      {/* Sidebar */}
+    <div
+      className={cn(
+        "flex h-full w-full min-w-0 max-w-full min-h-0 overflow-hidden border border-border",
+        isFullscreen ? "rounded-none" : "rounded-2xl"
+      )}
+    >      
       <aside
         className={cn(
           "flex flex-col min-h-0 md:border-r border-border bg-card w-full md:w-[340px] md:shrink-0 min-w-0",

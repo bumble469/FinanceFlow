@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, AccountType } from '@prisma/client';
 import { hashPassword, validatePasswordStrength } from '@/lib/password';
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  REFRESH_TOKEN_TTL,
-} from '@/lib/jwt';
+import { generateEmailVerifyPendingToken } from '@/lib/jwt';
 
 const prisma = new PrismaClient();
 
@@ -54,11 +50,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
+        const existingUser = await prisma.user.findUnique({
       where: { email },
+      select: { id: true, emailVerified: true },
     });
 
-    if (existingUser) {
+    if (existingUser?.emailVerified) {
       return NextResponse.json(
         {
           success: false,
@@ -70,73 +67,60 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await hashPassword(body.password!);
+    const accountType =
+      (body.accountType?.toUpperCase() as AccountType) || AccountType.INDIVIDUAL;
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: body.name?.trim() || null,
-        role: 'user',
-        emailVerified: new Date(),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
-    const accountType = (body.accountType?.toUpperCase() as AccountType) || AccountType.INDIVIDUAL;
-    await prisma.account.create({
-      data: {
-        userId: user.id,
-        name: body.accountName || 'My Account',
-        type: accountType 
-      },
-    });
+    let userId: string;
 
-    const accessToken = await generateAccessToken({
-      sub: user.id,
-      email: user.email,
-      name: user.name ?? undefined,
-      role: 'user',
-    });
+    if (existingUser) {
+      // An earlier signup was never verified: let them start over with the new details
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { password: hashedPassword, name: body.name?.trim() || null },
+      });
+      await prisma.account.updateMany({
+        where: { userId: existingUser.id },
+        data: { name: body.accountName || 'My Account', type: accountType },
+      });
+      userId = existingUser.id;
+    } else {
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name: body.name?.trim() || null,
+          role: 'user',
+          // emailVerified stays null until the code is confirmed
+        },
+        select: { id: true },
+      });
+      await prisma.account.create({
+        data: {
+          userId: user.id,
+          name: body.accountName || 'My Account',
+          type: accountType,
+        },
+      });
+      userId = user.id;
+    }
 
-    const refreshTokenRecord = await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
-        userAgent: request.headers.get('user-agent') || undefined,
-        ipAddress: getClientIp(request) || undefined,
-      },
-    });
-
-    const refreshToken = await generateRefreshToken(
-      user.id,
-      refreshTokenRecord.id
-    );
+    const pendingToken = await generateEmailVerifyPendingToken(userId);
 
     const response = NextResponse.json(
-      {
-        success: true,
-        data: {
-          accessToken,
-          user,
-        },
-      },
+      { success: true, requiresVerification: true, email },
       { status: 201 }
     );
-
     response.cookies.set({
-      name: 'refresh_token',
-      value: refreshToken,
+      name: 'pending_verify',
+      value: pendingToken,
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: REFRESH_TOKEN_TTL / 1000,
+      maxAge: 30 * 60,
       path: '/',
     });
-
     return response;
+    
   } catch (error) {
     console.error('[Signup] Error:', error);
     return NextResponse.json(

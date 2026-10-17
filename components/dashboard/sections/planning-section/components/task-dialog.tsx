@@ -102,7 +102,7 @@ export function TaskDialog({
   const patchReq = (patch: Partial<TaskRequirementInput>) => setRequirement((prev) => ({ ...prev, ...patch }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/40">
       <div className="w-96 max-h-[90vh] overflow-y-auto rounded-xl border bg-card p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">

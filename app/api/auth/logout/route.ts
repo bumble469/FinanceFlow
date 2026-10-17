@@ -17,6 +17,7 @@ export async function POST(
     const refreshTokenFromCookie = await getRefreshTokenFromCookie();
 
     if (!refreshTokenFromCookie) {
+      await clearAccessTokenCookie();
       await clearRefreshTokenCookie();
       return NextResponse.json<LogoutResponse>(
         {

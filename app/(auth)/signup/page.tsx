@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { AccountTypeToggle } from '@/components/auth/account-type-toggle'
 import { RiveRobot } from '@/components/auth/rive-robot'
+import { VerifyEmailPanel } from '@/components/auth/verify-email-panel'
 
 interface SignupFormValues {
   accountType: 'individual' | 'company'
@@ -50,6 +51,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [isSuccessState, setIsSuccessState] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<keyof SignupFormValues, boolean>>>({})
+
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
@@ -155,7 +158,6 @@ export default function SignupPage() {
 
     try {
       setLoading(true)
-
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,15 +183,7 @@ export default function SignupPage() {
         return
       }
 
-      setTriggerSuccess((prev) => prev + 1)
-      setIsSuccessState(true)
-
-      document.cookie = `access_token=${json.data.accessToken}; path=/; max-age=${15 * 60}; samesite=lax`
-
-      // 1.5s delay to show success animation
-      setTimeout(() => {
-        window.location.href = '/onboarding/plan'
-      }, 1500)
+      setVerifyEmail(json.email ?? formData.email)
     } catch (err) {
       console.error('Signup failed:', err)
       setErrors({ email: 'Something went wrong. Please try again.' })
@@ -252,240 +246,256 @@ export default function SignupPage() {
         </div>
 
         {/* Center Section: Fixed Header + Internal Scrollable Form Area */}
-        <div className="mx-auto w-full max-w-sm sm:max-w-md flex flex-col flex-1 min-h-0 my-auto py-4">
-
-          {/* Header Text (Fluid typography) */}
-          <div className="flex items-start justify-between gap-3 shrink-0 mb-2 sm:mb-2.5">
-            <div>
-              <h1 className="text-[clamp(1.3rem,1.8vw+1vh,1.875rem)] font-bold text-foreground tracking-tight leading-tight">
-                Create an Account
-              </h1>
-
-              <p className="text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] text-muted-foreground mt-0.5">
-                Join FinanceFlow to manage your projects and finances.
-              </p>
-            </div>
-
-            <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none">
-              <RiveRobot
-                isHandsUp={isPasswordFocused}
-                triggerFail={triggerFail}
-                triggerSuccess={triggerSuccess}
-              />
-            </div>
-          </div>
-
-          {/* Internal Form Scroll Container */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 py-0.5">
-            <form onSubmit={handleSubmit} className="space-y-[clamp(0.55rem,1.2vh,0.85rem)]">
-              {isSuccessState && (
-                <div className="p-2 rounded-xl bg-success/15 border border-success/30 text-success text-[clamp(0.7rem,0.6vw+0.3vh,0.8125rem)] text-center font-medium animate-pulse">
-                  Account created successfully! Preparing your workspace...
+        {verifyEmail ? (
+          <div className="mx-auto w-full max-w-sm sm:max-w-md my-auto py-4">
+            <VerifyEmailPanel
+              email={verifyEmail}
+              onSuccess={() => setTriggerSuccess((p) => p + 1)}
+              onFail={() => setTriggerFail((p) => p + 1)}
+              onBack={() => setVerifyEmail(null)}
+              aside={
+                <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none">
+                  <RiveRobot triggerFail={triggerFail} triggerSuccess={triggerSuccess} />
                 </div>
-              )}
+              }
+            />
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-sm sm:max-w-md flex flex-col flex-1 min-h-0 my-auto py-4">
 
-              {/* Account Type Toggle */}
-              <div className="p-2.5 rounded-xl bg-secondary/30 border border-border/50 text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)]">
-                <AccountTypeToggle
-                  value={formData.accountType}
-                  onChange={handleAccountTypeChange}
-                />
+            {/* Header Text (Fluid typography) */}
+            <div className="flex items-start justify-between gap-3 shrink-0 mb-2 sm:mb-2.5">
+              <div>
+                <h1 className="text-[clamp(1.3rem,1.8vw+1vh,1.875rem)] font-bold text-foreground tracking-tight leading-tight">
+                  Create an Account
+                </h1>
+
+                <p className="text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] text-muted-foreground mt-0.5">
+                  Join FinanceFlow to manage your projects and finances.
+                </p>
               </div>
 
-              {/* Company Name (Conditional) */}
-              {formData.accountType === 'company' && (
+              <div className="lg:hidden shrink-0 w-16 h-16 pointer-events-none">
+                <RiveRobot
+                  isHandsUp={isPasswordFocused}
+                  triggerFail={triggerFail}
+                  triggerSuccess={triggerSuccess}
+                />
+              </div>
+            </div>
+
+            {/* Internal Form Scroll Container */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 py-0.5">
+              <form onSubmit={handleSubmit} className="space-y-[clamp(0.55rem,1.2vh,0.85rem)]">
+                {isSuccessState && (
+                  <div className="p-2 rounded-xl bg-success/15 border border-success/30 text-success text-[clamp(0.7rem,0.6vw+0.3vh,0.8125rem)] text-center font-medium animate-pulse">
+                    Account created successfully! Preparing your workspace...
+                  </div>
+                )}
+
+                {/* Account Type Toggle */}
+                <div className="p-2.5 rounded-xl bg-secondary/30 border border-border/50 text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)]">
+                  <AccountTypeToggle
+                    value={formData.accountType}
+                    onChange={handleAccountTypeChange}
+                  />
+                </div>
+
+                {/* Company Name (Conditional) */}
+                {formData.accountType === 'company' && (
+                  <div className="space-y-0.5">
+                    <Label htmlFor="companyName" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                      Company Name
+                    </Label>
+                    <Input
+                      id="companyName"
+                      type="text"
+                      placeholder="Your Company Inc."
+                      value={formData.companyName}
+                      disabled={loading || isSuccessState}
+                      onChange={(e) => {
+                        setFormData({ ...formData, companyName: e.target.value })
+                        if (errors.companyName) setErrors({ ...errors, companyName: undefined })
+                      }}
+                      className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
+                    />
+                    {errors.companyName && (
+                      <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.companyName}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Full Name */}
                 <div className="space-y-0.5">
-                  <Label htmlFor="companyName" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
-                    Company Name
+                  <Label htmlFor="name" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                    Full Name
                   </Label>
                   <Input
-                    id="companyName"
+                    id="name"
                     type="text"
-                    placeholder="Your Company Inc."
-                    value={formData.companyName}
+                    placeholder="John Doe"
+                    value={formData.name}
                     disabled={loading || isSuccessState}
                     onChange={(e) => {
-                      setFormData({ ...formData, companyName: e.target.value })
-                      if (errors.companyName) setErrors({ ...errors, companyName: undefined })
+                      setFormData({ ...formData, name: e.target.value })
+                      if (errors.name) setErrors({ ...errors, name: undefined })
+                    }}
+                    onBlur={(e) => {
+                      setTouched({ ...touched, name: true })
+                      validateField('name', e.target.value)
                     }}
                     className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                   />
-                  {errors.companyName && (
-                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.companyName}</p>
+                  {errors.name && (
+                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.name}</p>
                   )}
                 </div>
-              )}
 
-              {/* Full Name */}
-              <div className="space-y-0.5">
-                <Label htmlFor="name" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  disabled={loading || isSuccessState}
-                  onChange={(e) => {
-                    setFormData({ ...formData, name: e.target.value })
-                    if (errors.name) setErrors({ ...errors, name: undefined })
-                  }}
-                  onBlur={(e) => {
-                    setTouched({ ...touched, name: true })
-                    validateField('name', e.target.value)
-                  }}
-                  className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
-                />
-                {errors.name && (
-                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.name}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-0.5">
-                <Label htmlFor="email" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="johnwick123@gmail.com"
-                  value={formData.email}
-                  disabled={loading || isSuccessState}
-                  onChange={(e) => {
-                    setFormData({ ...formData, email: e.target.value })
-                    if (errors.email) setErrors({ ...errors, email: undefined })
-                  }}
-                  onBlur={(e) => {
-                    setTouched({ ...touched, email: true })
-                    validateField('email', e.target.value)
-                  }}
-                  className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
-                />
-                {errors.email && (
-                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.email}</p>
-                )}
-              </div>
-
-              {/* Password */}
-              <div className="space-y-0.5">
-                <Label htmlFor="password" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
-                  Password
-                </Label>
-                <div className="relative">
+                {/* Email */}
+                <div className="space-y-0.5">
+                  <Label htmlFor="email" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                    Email
+                  </Label>
                   <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    value={formData.password}
+                    id="email"
+                    type="email"
+                    placeholder="johnwick123@gmail.com"
+                    value={formData.email}
                     disabled={loading || isSuccessState}
-                    onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={(e) => {
-                      setIsPasswordFocused(false)
-                      setTouched({ ...touched, password: true })
-                      validateField('password', e.target.value)
-                    }}
                     onChange={(e) => {
-                      setFormData({ ...formData, password: e.target.value })
-                      if (errors.password) setErrors({ ...errors, password: undefined })
+                      setFormData({ ...formData, email: e.target.value })
+                      if (errors.email) setErrors({ ...errors, email: undefined })
                     }}
-                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
+                    onBlur={(e) => {
+                      setTouched({ ...touched, email: true })
+                      validateField('email', e.target.value)
+                    }}
+                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  {errors.email && (
+                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.email}</p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.password}</p>
-                )}
+
+                {/* Password */}
+                <div className="space-y-0.5">
+                  <Label htmlFor="password" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••"
+                      value={formData.password}
+                      disabled={loading || isSuccessState}
+                      onFocus={() => setIsPasswordFocused(true)}
+                      onBlur={(e) => {
+                        setIsPasswordFocused(false)
+                        setTouched({ ...touched, password: true })
+                        validateField('password', e.target.value)
+                      }}
+                      onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value })
+                        if (errors.password) setErrors({ ...errors, password: undefined })
+                      }}
+                      className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.password}</p>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div className="space-y-0.5">
+                  <Label htmlFor="confirmPassword" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
+                    Confirm Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••"
+                      value={formData.confirmPassword}
+                      disabled={loading || isSuccessState}
+                      onFocus={() => setIsPasswordFocused(true)}
+                      onBlur={(e) => {
+                        setIsPasswordFocused(false)
+                        setTouched({ ...touched, confirmPassword: true })
+                        validateField('confirmPassword', e.target.value)
+                      }}
+                      onChange={(e) => {
+                        setFormData({ ...formData, confirmPassword: e.target.value })
+                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined })
+                      }}
+                      className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      tabIndex={-1}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.confirmPassword}</p>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={loading || isSuccessState}
+                  className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.75rem,0.8vw+0.3vh,0.9375rem)] rounded-xl bg-foreground text-background font-semibold hover:opacity-90 active:scale-[0.99] transition-all shadow-md cursor-pointer mt-1"
+                >
+                  {loading ? 'Creating Account...' : isSuccessState ? 'Created!' : 'Create Account'}
+                </Button>
+              </form>
+
+              {/* Divider */}
+              <div className="my-[clamp(0.4rem,1.2vh,0.85rem)] flex items-center gap-3">
+                <div className="h-px flex-1 bg-border/60" />
+                <span className="text-[clamp(0.65rem,0.6vw+0.3vh,0.75rem)] font-semibold tracking-wider text-muted-foreground uppercase">
+                  OR
+                </span>
+                <div className="h-px flex-1 bg-border/60" />
               </div>
 
-              {/* Confirm Password */}
-              <div className="space-y-0.5">
-                <Label htmlFor="confirmPassword" className="text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] font-semibold text-foreground">
-                  Confirm Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    value={formData.confirmPassword}
-                    disabled={loading || isSuccessState}
-                    onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={(e) => {
-                      setIsPasswordFocused(false)
-                      setTouched({ ...touched, confirmPassword: true })
-                      validateField('confirmPassword', e.target.value)
-                    }}
-                    onChange={(e) => {
-                      setFormData({ ...formData, confirmPassword: e.target.value })
-                      if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined })
-                    }}
-                    className="bg-secondary/40 border-border/50 rounded-xl px-3.5 pr-10 h-[clamp(2.1rem,3.4vh,2.5rem)] text-[clamp(0.75rem,0.7vw+0.3vh,0.875rem)] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    tabIndex={-1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.confirmPassword && (
-                  <p className="text-[11px] text-destructive font-medium mt-0.5">{errors.confirmPassword}</p>
-                )}
-              </div>
-
-              {/* Submit Button */}
+              {/* Google Signup Button */}
               <Button
-                type="submit"
+                type="button"
+                variant="outline"
+                onClick={handleGoogleSignup}
                 disabled={loading || isSuccessState}
-                className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.75rem,0.8vw+0.3vh,0.9375rem)] rounded-xl bg-foreground text-background font-semibold hover:opacity-90 active:scale-[0.99] transition-all shadow-md cursor-pointer mt-1"
+                className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] rounded-xl border border-border/60 bg-secondary/20 hover:bg-secondary/50 text-foreground font-medium flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
               >
-                {loading ? 'Creating Account...' : isSuccessState ? 'Created!' : 'Create Account'}
+                <FcGoogle className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>With Google</span>
               </Button>
-            </form>
 
-            {/* Divider */}
-            <div className="my-[clamp(0.4rem,1.2vh,0.85rem)] flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/60" />
-              <span className="text-[clamp(0.65rem,0.6vw+0.3vh,0.75rem)] font-semibold tracking-wider text-muted-foreground uppercase">
-                OR
-              </span>
-              <div className="h-px flex-1 bg-border/60" />
-            </div>
-
-            {/* Google Signup Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGoogleSignup}
-              disabled={loading || isSuccessState}
-              className="w-full h-[clamp(2.25rem,3.8vh,2.75rem)] text-[clamp(0.72rem,0.7vw+0.3vh,0.875rem)] rounded-xl border border-border/60 bg-secondary/20 hover:bg-secondary/50 text-foreground font-medium flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
-            >
-              <FcGoogle className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span>With Google</span>
-            </Button>
-
-            {/* Footer */}
-            <div className="mt-3 pb-2 text-center text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] text-muted-foreground">
-              Already have an account?{' '}
-              <Link href="/login" className="text-primary hover:underline font-semibold ml-1">
-                Sign in
-              </Link>
+              {/* Footer */}
+              <div className="mt-3 pb-2 text-center text-[clamp(0.7rem,0.7vw+0.3vh,0.8125rem)] text-muted-foreground">
+                Already have an account?{' '}
+                <Link href="/login" className="text-primary hover:underline font-semibold ml-1">
+                  Sign in
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom copyright */}
         <div className="text-[clamp(0.65rem,0.6vw+0.2vh,0.75rem)] text-muted-foreground/60 text-center lg:text-left shrink-0 pt-1">

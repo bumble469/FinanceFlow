@@ -198,6 +198,14 @@ class AuthClient {
         } else {
           this.accessToken = null;
           this.user = null;
+          try { localStorage.removeItem("financial-store"); } catch {}
+
+          if (typeof window !== "undefined") {
+            const publicPaths = ["/", "/login", "/signup", "/two-factor"];
+            const p = window.location.pathname;
+            const isPublic = publicPaths.some((x) => p === x || (x !== "/" && p.startsWith(x)));
+            if (!isPublic) window.location.replace("/login");
+          }
 
           throw error;
         }
