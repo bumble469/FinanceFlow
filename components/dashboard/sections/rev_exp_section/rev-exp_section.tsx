@@ -138,14 +138,14 @@ const INCOME_TYPE_BADGE_CLASS: Record<string, string> = {
   CLIENT_PAYMENT: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
   MERCHANDISE: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   REFUND: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  OTHER: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+  OTHER: "bg-gray-500/10 text-gray-600 dark:text-muted-foreground",
 };
 
 const INCOME_STATUS_BADGE_CLASS: Record<string, string> = {
   EXPECTED: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   PARTIAL: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
   RECEIVED: "bg-green-500/10 text-green-600 dark:text-green-400",
-  CANCELLED: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+  CANCELLED: "bg-gray-500/10 text-gray-600 dark:text-muted-foreground",
 };
 
 const PAYMENT_STATUS_BADGE_CLASS: Record<string, string> = {

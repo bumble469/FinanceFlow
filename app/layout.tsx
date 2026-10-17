@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
+        url: '/web_logo.png',
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: '/icon-dark-32x32.png',
+        url: '/web_logo.png',
         media: '(prefers-color-scheme: dark)',
       },
       {
@@ -49,7 +49,13 @@ export default function RootLayout({
           src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"
           strategy="beforeInteractive"
         />
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+          storageKey="financeflow-theme"
+        >
           {children}
           <Snackbar />
           <Analytics />

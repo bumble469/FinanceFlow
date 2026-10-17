@@ -574,7 +574,7 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                               >
                                 <Pencil className="h-4 w-4" />
                                 {financeOn && canSeeSetupBadges && isMissingSetup(member) && (
-                                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-500 text-[9px] font-bold text-white">
+                                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-500 text-[9px] font-bold text-foreground">
                                     !
                                   </span>
                                 )}
@@ -601,7 +601,7 @@ export function TeamSection({ planId, permissions }: { planId: string; permissio
                                 >
                                   <Shield className="h-4 w-4" />
                                   {isMissingPermissions(member) && (
-                                    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-500 text-[9px] font-bold text-white">
+                                    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-500 text-[9px] font-bold text-foreground">
                                       !
                                     </span>
                                   )}

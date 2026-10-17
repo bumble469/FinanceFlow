@@ -125,7 +125,7 @@ export function NotificationsDialog({
             >
               {t.label}
               {t.unread > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-foreground">
                   {t.unread > 99 ? "99+" : t.unread}
                 </span>
               )}

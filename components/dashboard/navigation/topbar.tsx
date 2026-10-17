@@ -24,7 +24,7 @@ export function Topbar({ title, planId }: TopbarProps) {
           size="icon"
           title="Plan settings"
           onClick={() => setSettingsOpen(true)}
-          className="h-9 w-9 hover:bg-blue-600 hover:text-white cursor-pointer"
+          className="h-9 w-9 hover:bg-blue-600 hover:text-foreground cursor-pointer"
         >
           <Settings className="h-4.5 w-4.5" />
         </Button>

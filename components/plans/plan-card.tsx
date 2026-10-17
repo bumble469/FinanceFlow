@@ -317,7 +317,7 @@ export function PlanCard({
 
               <AlertDialogFooter>
                 <AlertDialogCancel className="cursor-pointer hover:text-gray-600">Cancel</AlertDialogCancel>
-                <AlertDialogAction className="cursor-pointer bg-red-500 hover:bg-red-700 hover:text-gray-100" onClick={handleDeletePlan} disabled={deleting}>
+                <AlertDialogAction className="cursor-pointer bg-red-500 hover:bg-red-700 hover:text-foreground" onClick={handleDeletePlan} disabled={deleting}>
                   {deleting ? "Deleting..." : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>

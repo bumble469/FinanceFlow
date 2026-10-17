@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    id: "2026-10-17-account-security",
+    date: "2026-10-17",
+    title: "Account Security & Verification",
+    tag: "Improved",
+    bullets: [
+      "Added two-factor authentication (2FA) setup with backup codes.",
+      "Enhanced account settings for improved account management and security.",
+      "Added signup verification to help secure new accounts.",
+      "SMS-based account recovery is currently in progress.",
+    ],
+  },
+  {
     id: "2026-10-12-connections-fullscreen",
     date: "2026-10-12",
     title: "Connections Fullscreen & Mobile View",

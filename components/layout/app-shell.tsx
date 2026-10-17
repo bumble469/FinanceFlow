@@ -36,6 +36,15 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
       socket.off("chat:read", handleRead);
     };
   }, [appendMessage, markOwnMessagesRead, currentUser?.id]);
+
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload(); 
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <GlobalSidebar />
@@ -51,10 +60,10 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-7xl h-full",
+              "mx-auto w-full max-w-7xl",
               isConnections
-                ? "p-3 md:p-6 pb-20 md:pb-6 overflow-hidden"
-                : "px-6 py-8 pb-24 md:pb-8 lg:px-8"
+                ? "h-full p-3 md:p-6 pb-20 md:pb-6 overflow-hidden"
+                : "min-h-full px-6 py-8 pb-24 md:pb-8 lg:px-8"
             )}
           >
             {children}

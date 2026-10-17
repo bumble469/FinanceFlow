@@ -9,8 +9,9 @@ const JWT_REFRESH_SECRET = new TextEncoder().encode(
   process.env.JWT_REFRESH_SECRET
 );
 
-export const ACCESS_TOKEN_TTL = 15 * 60 * 1000; 
-export const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60 * 1000; 
+export const ACCESS_TOKEN_TTL = 15 * 60 * 1000;
+export const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60 * 1000;
+export const TWO_FA_PENDING_TTL = 5 * 60 * 1000;
 
 export interface AccessTokenPayload {
   sub: string;
@@ -99,7 +100,7 @@ export async function verifyRefreshToken(
 
 export async function setRefreshTokenCookie(token: string, expiresIn: number) {
   const cookieStore = await cookies();
-  cookieStore.set('refresh_token', token, { 
+  cookieStore.set('refresh_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -132,7 +133,7 @@ export async function clearRefreshTokenCookie() {
 
 export async function getRefreshTokenFromCookie(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get('refresh_token')?.value || null; 
+  return cookieStore.get('refresh_token')?.value || null;
 }
 
 export async function decodeToken(token: string) {
@@ -140,6 +141,63 @@ export async function decodeToken(token: string) {
     return jose.decodeJwt(token);
   } catch (error) {
     console.error('[JWT] Token decode failed:', error);
+    return null;
+  }
+}
+
+export async function generateTwoFactorPendingToken(userId: string) {
+  const token = await new jose.SignJWT({ sub: userId, purpose: '2fa' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(JWT_SECRET);
+  return token;
+}
+
+export async function verifyTwoFactorPendingToken(
+  token: string
+): Promise<{ sub: string } | null> {
+  try {
+    const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+    if (payload.sub && payload.purpose === '2fa') {
+      return { sub: String(payload.sub) };
+    }
+    return null;
+  } catch (error) {
+    console.error('[JWT] Two-factor pending token verification failed:', error);
+    return null;
+  }
+}
+
+export async function clearPendingTwoFactorCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set('pending_2fa', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 0,
+    path: '/',
+  });
+}
+
+export async function generateEmailVerifyPendingToken(userId: string) {
+  return new jose.SignJWT({ sub: userId, purpose: 'verify-email' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('30m')
+    .sign(JWT_SECRET);
+}
+
+export async function verifyEmailVerifyPendingToken(
+  token: string
+): Promise<{ sub: string } | null> {
+  try {
+    const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+    if (payload.sub && payload.purpose === 'verify-email') {
+      return { sub: String(payload.sub) };
+    }
+    return null;
+  } catch {
     return null;
   }
 }

@@ -21,31 +21,36 @@ type AuthState = 'checking' | 'authed' | 'guest';
 export default function Home() {
   const currentUser = useFinancialStore((s) => s.currentUser);
   const setCurrentUser = useFinancialStore((s) => s.setCurrentUser);
-  const [authState, setAuthState] = useState<AuthState>(currentUser ? 'authed' : 'checking');
+  const [authState, setAuthState] = useState<AuthState>('checking');
 
   useEffect(() => {
-    if (currentUser) {
-      setAuthState('authed');
-      return;
-    }
     let cancelled = false;
-    async function checkAuth() {
+
+    (async () => {
       try {
         const res = await authClient.request('/api/auth/me');
         const user = res.data?.data;
-        if (cancelled) false;
+        if (cancelled) return;
+
         if (user) {
           authClient.setUser(user);
           setCurrentUser(user);
           setAuthState('authed');
         } else {
+          setCurrentUser(null);
           setAuthState('guest');
         }
-      } catch (err) {
-        if (!cancelled) setAuthState('guest');
+      } catch {
+        if (cancelled) return;
+        authClient.setUser(null);
+        setCurrentUser(null); // wipes the persisted copy too
+        setAuthState('guest');
       }
-    }
-    checkAuth();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (authState === 'checking') {
