@@ -87,6 +87,13 @@ export async function GET(request: NextRequest) {
         where: { email },
       });
 
+      if (user && !user.emailVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: new Date(), password: null },
+        });
+      }
+
       if (!user) {
         user = await prisma.user.create({
           data: {

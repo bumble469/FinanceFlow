@@ -12,6 +12,8 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { useSnackbar } from "@/lib/useSnackbar";
 import { cn } from "@/lib/utils";
+import { useFinancialStore } from "@/lib/store";
+import { ChangePasswordDialog } from "@/components/settings/change-password-dialog";
 
 const TYPES = [
   { value: "INDIVIDUAL", label: "Individual" },
@@ -111,65 +113,21 @@ export function AccountDetailsSection() {
 
 /* ---------- Security ---------- */
 export function SecuritySection() {
-  const { show } = useSnackbar();
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
-  const [userEmail, setUserEmail] = useState("");
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [sendingReset, setSendingReset] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     authClient
       .request("/api/settings/profile")
-      .then((res) => {
-        setHasPassword(res.data.data.hasPassword);
-        setUserEmail(res.data.data.email ?? "");
-      })
+      .then((res) => setHasPassword(res.data.data.hasPassword))
       .catch(() => setHasPassword(false));
   }, []);
-
-  const mismatch = confirm.length > 0 && next !== confirm;
-  const canSubmit = !!current && !!next && next === confirm && !saving;
-
-  const handleChange = async () => {
-    setSaving(true);
-    try {
-      await authClient.request("/api/settings/password", {
-        method: "PATCH",
-        data: { currentPassword: current, newPassword: next },
-      });
-      setCurrent(""); setNext(""); setConfirm("");
-      show("Password changed", "success");
-    } catch (err) {
-      show(errMsg(err, "Failed to change password"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSendReset = async () => {
-    setSendingReset(true);
-    try {
-      await authClient.request("/api/settings/password/reset-request", {
-        method: "POST",
-      });
-      setResetSent(true);
-      show("Password reset instructions sent to your email", "success");
-    } catch (err) {
-      show(errMsg(err, "Failed to send reset email"), "error");
-    } finally {
-      setSendingReset(false);
-    }
-  };
 
   const handleSignOutAll = async () => {
     try {
       await authClient.request("/api/auth/logout-all", { method: "POST" });
     } finally {
+      useFinancialStore.getState().setCurrentUser(null);
       window.location.href = "/login"; // use your real login route
     }
   };
@@ -185,40 +143,16 @@ export function SecuritySection() {
             You sign in with Google, so there is no password to change.
           </p>
         ) : hasPassword ? (
-          <div className="mb-6 space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Current password</Label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetSent(false);
-                    setForgotOpen(true);
-                  }}
-                  className="text-xs text-primary hover:underline font-medium cursor-pointer"
-                >
-                  Forgot password?
-                </button>
-              </div>
-              <Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>New password</Label>
-              <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Password</p>
               <p className="text-xs text-muted-foreground">
-                At least 8 characters with upper and lower case, a number and a symbol.
+                We'll email you a code to confirm before it's changed.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Confirm new password</Label>
-              <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-              {mismatch && <p className="text-xs text-destructive">Passwords don't match.</p>}
-            </div>
-            <div className="flex justify-end">
-              <Button className="cursor-pointer" onClick={handleChange} disabled={!canSubmit}>
-                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</> : "Update password"}
-              </Button>
-            </div>
+            <Button variant="outline" className="cursor-pointer" onClick={() => setDialogOpen(true)}>
+              Change password
+            </Button>
           </div>
         ) : null}
 
@@ -233,60 +167,7 @@ export function SecuritySection() {
         </div>
       </Card>
 
-      {/* Forgot Password Dialog */}
-      <Dialog open={forgotOpen} onOpenChange={(o) => !sendingReset && setForgotOpen(o)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset your password</DialogTitle>
-            <DialogDescription>
-              Forgot your current password? We can send password reset instructions to your registered email address.
-            </DialogDescription>
-          </DialogHeader>
-
-          {resetSent ? (
-            <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 text-sm text-foreground space-y-1">
-              <p className="font-semibold text-primary">Reset instructions sent!</p>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                We sent an email to <span className="font-medium text-foreground">{userEmail}</span> with instructions to reset your password. Please check your inbox and spam folder.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 py-1">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Registered email</Label>
-                <Input value={userEmail} disabled className="bg-muted/40 cursor-not-allowed text-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                You will receive a secure email containing instructions to update your credentials.
-              </p>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            {resetSent ? (
-              <Button onClick={() => setForgotOpen(false)} className="cursor-pointer">
-                Done
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setForgotOpen(false)} disabled={sendingReset} className="cursor-pointer">
-                  Cancel
-                </Button>
-                <Button onClick={handleSendReset} disabled={sendingReset || !userEmail} className="cursor-pointer">
-                  {sendingReset ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending instructions...
-                    </>
-                  ) : (
-                    "Send reset instructions"
-                  )}
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChangePasswordDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }
@@ -317,7 +198,8 @@ export function DangerZoneSection() {
         method: "DELETE",
         data: { confirmEmail, password },
       });
-      window.location.href = "/login"; // use your real login route
+      useFinancialStore.getState().setCurrentUser(null);
+      window.location.href = "/login";
     } catch (err) {
       show(errMsg(err, "Failed to delete account"), "error");
       setDeleting(false);
@@ -361,8 +243,8 @@ export function DangerZoneSection() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={deleting}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={!canDelete}>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={deleting} className="cursor-pointer">Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={!canDelete} className="cursor-pointer">
               {deleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete permanently"}
             </Button>
           </DialogFooter>

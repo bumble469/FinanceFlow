@@ -46,7 +46,7 @@ export function LandingHeader() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/25 backdrop-blur-md supports-[backdrop-filter]:bg-background/20 transition-all">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/25 backdrop-blur-md supports-[backdrop-filter]:bg-background/20 transition-all">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 lg:px-8">
         
         {/* Left: Logo + Navigation grouped together */}
@@ -107,7 +107,7 @@ export function LandingHeader() {
 
           <Link
             href="/signup"
-            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-all hover:bg-zinc-200 active:scale-95 shadow-sm"
+            className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition-all hover:bg-foreground/90 active:scale-95 shadow-sm"
           >
             Sign Up
           </Link>
@@ -158,7 +158,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 href="/signup"
-                className="rounded-lg bg-white py-2.5 text-center text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
+                className="rounded-lg bg-foreground py-2.5 text-center text-sm font-semibold text-background hover:bg-foreground/90 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 Sign Up

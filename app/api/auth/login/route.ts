@@ -6,6 +6,7 @@ import {
   generateRefreshToken,
   REFRESH_TOKEN_TTL,
   generateTwoFactorPendingToken,
+  generateEmailVerifyPendingToken,
 } from '@/lib/jwt';
 import { getOtpDestination } from '@/lib/two-factor';
 import bcrypt from 'bcryptjs';
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
         name: true,
         password: true,
         role: true,
+        emailVerified: true,
         twoFactor: true,
       },
     });
@@ -65,6 +67,29 @@ export async function POST(request: NextRequest) {
         },
         { status: 401 }
       );
+    }
+
+    if (!user.emailVerified) {
+      const pendingToken = await generateEmailVerifyPendingToken(user.id);
+      const res = NextResponse.json(
+        {
+          success: false,
+          requiresVerification: true,
+          email: user.email,
+          error: 'Please verify your email to continue.',
+        },
+        { status: 403 }
+      );
+      res.cookies.set({
+        name: 'pending_verify',
+        value: pendingToken,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 60,
+        path: '/',
+      });
+      return res;
     }
 
     if (user.twoFactor?.enabled) {

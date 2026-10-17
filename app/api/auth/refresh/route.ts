@@ -25,27 +25,11 @@ export async function POST(
   try {
     const refreshTokenFromCookie = await getRefreshTokenFromCookie();
 
-    if (!refreshTokenFromCookie) {
-      return NextResponse.json<RefreshResponse>(
-        {
-          success: false,
-          error: 'No refresh token provided',
-        },
-        { status: 401 }
-      );
-    }
+    if (!refreshTokenFromCookie) return failAndClear('No refresh token provided');
 
     const decoded = await verifyRefreshToken(refreshTokenFromCookie);
 
-    if (!decoded) {
-      return NextResponse.json<RefreshResponse>(
-        {
-          success: false,
-          error: 'Invalid or expired refresh token',
-        },
-        { status: 401 }
-      );
-    }
+    if (!decoded) return failAndClear('Invalid or expired refresh token');
 
     const refreshTokenRecord = await prisma.refreshToken.findUnique({
       where: { id: decoded.tokenId },
@@ -61,27 +45,9 @@ export async function POST(
       },
     });
 
-    // Verify token exists and is not revoked
-    if (!refreshTokenRecord || refreshTokenRecord.revokedAt !== null) {
-      return NextResponse.json<RefreshResponse>(
-        {
-          success: false,
-          error: 'Refresh token has been revoked',
-        },
-        { status: 401 }
-      );
-    }
+    if (!refreshTokenRecord || refreshTokenRecord.revokedAt !== null) return failAndClear('Refresh token has been revoked');
 
-    // Verify token expiry
-    if (new Date() > refreshTokenRecord.expiresAt) {
-      return NextResponse.json<RefreshResponse>(
-        {
-          success: false,
-          error: 'Refresh token has expired',
-        },
-        { status: 401 }
-      );
-    }
+    if (new Date() > refreshTokenRecord.expiresAt) return failAndClear('Refresh token has expired');
 
     // GENERATE NEW ACCESS TOKEN
     const { user } = refreshTokenRecord;
@@ -176,4 +142,11 @@ function getClientIp(request: NextRequest): string | null {
     request.headers.get('x-real-ip') ||
     null
   );
+}
+
+function failAndClear(error: string, status = 401) {
+  const res = NextResponse.json<RefreshResponse>({ success: false, error }, { status });
+  res.cookies.set({ name: 'access_token', value: '', maxAge: 0, path: '/', httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  res.cookies.set({ name: 'refresh_token', value: '', maxAge: 0, path: '/', httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
+  return res;
 }

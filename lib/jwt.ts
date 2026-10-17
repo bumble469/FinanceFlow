@@ -179,3 +179,25 @@ export async function clearPendingTwoFactorCookie() {
     path: '/',
   });
 }
+
+export async function generateEmailVerifyPendingToken(userId: string) {
+  return new jose.SignJWT({ sub: userId, purpose: 'verify-email' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setIssuedAt()
+    .setExpirationTime('30m')
+    .sign(JWT_SECRET);
+}
+
+export async function verifyEmailVerifyPendingToken(
+  token: string
+): Promise<{ sub: string } | null> {
+  try {
+    const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+    if (payload.sub && payload.purpose === 'verify-email') {
+      return { sub: String(payload.sub) };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

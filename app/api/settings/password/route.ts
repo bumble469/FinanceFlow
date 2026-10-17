@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { hashPassword, verifyPassword, validatePasswordStrength } from "@/lib/password";
+import { verifyOtp } from "@/lib/otp";
+
+const MAX_ATTEMPTS = 5;
 
 export async function PATCH(req: NextRequest) {
   try {
     const auth = await getAuthUser();
     if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { currentPassword, newPassword } = await req.json();
+    const { code, newPassword } = await req.json();
 
     const user = await prisma.user.findUnique({
       where: { id: auth.sub },
@@ -21,8 +24,27 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    if (!currentPassword || !(await verifyPassword(currentPassword, user.password))) {
-      return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+    // latest unused code: unexpired, max 5 wrong tries
+    const challenge = await prisma.passwordChangeCode.findFirst({
+      where: { userId: auth.sub, usedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!challenge || challenge.expiresAt < new Date()) {
+      return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 400 });
+    }
+    if (challenge.attempts >= MAX_ATTEMPTS) {
+      return NextResponse.json(
+        { error: "Too many incorrect attempts. Request a new code." },
+        { status: 429 }
+      );
+    }
+    const cleaned = String(code ?? "").replace(/\s/g, "");
+    if (!/^\d{6}$/.test(cleaned) || !(await verifyOtp(cleaned, challenge.codeHash))) {
+      await prisma.passwordChangeCode.update({
+        where: { id: challenge.id },
+        data: { attempts: { increment: 1 } },
+      });
+      return NextResponse.json({ error: "Incorrect code" }, { status: 400 });
     }
 
     const strength = validatePasswordStrength(newPassword ?? "");
@@ -33,10 +55,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "New password must be different" }, { status: 400 });
     }
 
-    await prisma.user.update({
-      where: { id: auth.sub },
-      data: { password: await hashPassword(newPassword) },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: auth.sub },
+        data: { password: await hashPassword(newPassword) },
+      }),
+      prisma.passwordChangeCode.update({
+        where: { id: challenge.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {

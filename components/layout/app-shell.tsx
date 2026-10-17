@@ -36,6 +36,15 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
       socket.off("chat:read", handleRead);
     };
   }, [appendMessage, markOwnMessagesRead, currentUser?.id]);
+
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload(); 
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <GlobalSidebar />

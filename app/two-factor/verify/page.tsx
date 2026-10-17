@@ -129,7 +129,7 @@ export default function TwoFactorVerifyPage() {
                         </InputOTP>
                     )}
 
-                    <Button type="submit" disabled={loading || !ready} className="w-full">
+                    <Button type="submit" disabled={loading || !ready} className="w-full cursor-pointer">
                         {loading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
@@ -149,7 +149,7 @@ export default function TwoFactorVerifyPage() {
                                     type="button"
                                     onClick={() => sendCode(false)}
                                     disabled={resending || cooldown > 0}
-                                    className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                                    className="text-primary hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
                                 >
                                     {resending ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : `Resend (${remaining} left)`}
                                 </button>
@@ -161,7 +161,7 @@ export default function TwoFactorVerifyPage() {
                     <button
                         type="button"
                         onClick={() => { setUseBackup(!useBackup); setCode(''); setError(''); }}
-                        className="text-muted-foreground hover:text-foreground ml-auto"
+                        className="text-muted-foreground hover:text-foreground ml-auto cursor-pointer"
                     >
                         {useBackup ? 'Use a verification code' : 'Use a backup code'}
                     </button>
