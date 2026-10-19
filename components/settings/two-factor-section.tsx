@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { SettingsSection, SettingsRow } from '@/components/settings/settings-layout';
 import { authClient } from '@/lib/auth-client';
 import { useSnackbar } from '@/lib/useSnackbar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -92,64 +91,57 @@ export function TwoFactorSection() {
     const maskPhone = (phone: string) => `•••• ${phone.slice(-4)}`;
 
     return (
-        <Card className="border border-border bg-card p-4 sm:p-6">
-            <h2 className="text-xl font-semibold text-foreground">Two-step verification</h2>
-            <p className="mb-6 text-sm text-muted-foreground">Add a second layer of security to your sign-in.</p>
-
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <p className="text-sm font-medium text-foreground">Require verification code at sign-in</p>
-                    <p className="text-xs text-muted-foreground">
-                        {settings.enabled
+        <>
+            <SettingsSection
+                title="Two-step verification"
+                description="Add a second layer of security to your sign-in."
+            >
+                <SettingsRow
+                    action
+                    label="Require verification code at sign-in"
+                    description={
+                        settings.enabled
                             ? 'On. A code will be sent to your recovery contact.'
-                            : 'Off. Add a second layer of security to your sign-in.'}
-                    </p>
-                </div>
-                {settings.enabled ? (
-                    <Button variant="outline" onClick={toggle} disabled={loading}>
-                        Turn off
-                    </Button>
-                ) : (
-                    <Button onClick={toggle}>Set up</Button>
-                )}
-            </div>
-
-            {!settings.enabled && (
-                <Button onClick={() => (window.location.href = '/two-factor/setup')} className="w-full sm:w-auto">
-                    Set up two-step verification
-                </Button>
-            )}
-
-            {settings.enabled && (
-                <>
-                    <div className="space-y-4 mb-6">
-                        <div className="space-y-2">
-                            <Label>Method</Label>
-                            <p className="text-sm text-muted-foreground">{settings.method === 'SMS' ? 'SMS' : 'Email'}</p>
-                        </div>
-                        {settings.recoveryEmail && (
-                            <div className="space-y-2">
-                                <Label>Recovery email</Label>
-                                <p className="text-sm text-muted-foreground">{maskEmail(settings.recoveryEmail)}</p>
-                            </div>
-                        )}
-                        {settings.recoveryPhone && (
-                            <div className="space-y-2">
-                                <Label>Recovery phone</Label>
-                                <p className="text-sm text-muted-foreground">{maskPhone(settings.recoveryPhone)}</p>
-                            </div>
-                        )}
-                        <a href="/two-factor/setup" className="text-sm text-primary hover:underline">Manage recovery contact</a>
-                    </div>
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-medium text-foreground">Change recovery email / phone</p>
-                        <Button variant="outline" asChild>
-                            <a href="/two-factor/setup">Change</a>
+                            : 'Off. Add a second layer of security to your sign-in.'
+                    }
+                >
+                    {settings.enabled ? (
+                        <Button variant="outline" className="cursor-pointer" onClick={toggle} disabled={loading}>
+                            Turn off
                         </Button>
-                    </div>
-                </>
-            )}
+                    ) : (
+                        <Button className="cursor-pointer" onClick={toggle}>
+                            Set up
+                        </Button>
+                    )}
+                </SettingsRow>
+
+                {settings.enabled && (
+                    <>
+                        <SettingsRow label="Method">
+                            <p className="text-sm text-foreground">{settings.method === 'SMS' ? 'SMS' : 'Email'}</p>
+                        </SettingsRow>
+
+                        {settings.recoveryEmail && (
+                            <SettingsRow label="Recovery email">
+                                <p className="text-sm text-foreground">{maskEmail(settings.recoveryEmail)}</p>
+                            </SettingsRow>
+                        )}
+
+                        {settings.recoveryPhone && (
+                            <SettingsRow label="Recovery phone">
+                                <p className="text-sm text-foreground">{maskPhone(settings.recoveryPhone)}</p>
+                            </SettingsRow>
+                        )}
+
+                        <SettingsRow action label="Recovery contact" description="Change recovery email / phone">
+                            <Button variant="outline" asChild className="cursor-pointer">
+                                <a href="/two-factor/setup">Change</a>
+                            </Button>
+                        </SettingsRow>
+                    </>
+                )}
+            </SettingsSection>
             <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : closeDialog())}>
                 <DialogContent>
                     <DialogHeader>
@@ -219,6 +211,6 @@ export function TwoFactorSection() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </>
     );
 }

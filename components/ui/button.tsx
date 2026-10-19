@@ -8,16 +8,17 @@ const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+            variant: {
+        default:
+          'border border-foreground/15 bg-primary text-primary-foreground hover:bg-primary/90 hover:border-foreground/25',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'border border-foreground/10 bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:border-foreground/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
-          'border bg-background shadow-xs hover:bg-muted hover:text-foreground dark:bg-input/30 dark:border-input dark:hover:bg-muted',
+          'border border-foreground/15 bg-background shadow-xs hover:bg-muted hover:text-foreground hover:border-foreground/25 dark:bg-input/30 dark:border-foreground/15 dark:hover:bg-muted',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'border border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:border-foreground/20',
         ghost:
-          'hover:bg-muted hover:text-foreground',
+          'border border-transparent hover:bg-muted hover:text-foreground hover:border-foreground/10',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

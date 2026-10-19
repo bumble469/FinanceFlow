@@ -10,6 +10,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    id: "2026-10-19-user-preferences",
+    date: "2026-10-19",
+    title: "User Preferences & Message Snackbar",
+    tag: "New",
+    bullets: [
+      "Introduced a per-user preferences system backed by the database — settings now persist across devices and sessions.",
+      "Added a message snackbar: a top-left toast notification when a new message arrives while you're elsewhere in the app.",
+      "Snackbar is suppressed automatically when you're already on the Connections page.",
+      "Toggle message notifications on or off from Settings → Connections.",
+      "Removed the unread badge toggle — the sidebar badge now always reflects unread messages.",
+    ],
+  },
+  {
     id: "2026-10-17-account-security",
     date: "2026-10-17",
     title: "Account Security & Verification",

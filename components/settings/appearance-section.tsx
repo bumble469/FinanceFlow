@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { SettingsSection, SettingsRow } from "@/components/settings/settings-layout";
 import { cn } from "@/lib/utils";
 
 const THEME_OPTIONS = [
@@ -59,90 +58,84 @@ export function AppearanceSection() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="space-y-6">
-      <Card className="border border-border bg-card p-4 sm:p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Appearance</h2>
-          <p className="text-sm text-muted-foreground">
-            Customize how FinanceFlow looks and feels across your devices.
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Theme Mode</Label>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {THEME_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const active = mounted && theme === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTheme(opt.value)}
+    <SettingsSection
+      title="Appearance"
+      description="Customize how FinanceFlow looks and feels across your devices."
+    >
+      <SettingsRow label="Theme mode" description="Choose how FinanceFlow looks on this device." wide>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {THEME_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const active = mounted && theme === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTheme(opt.value)}
+                  className={cn(
+                    "group relative flex flex-col text-left rounded-xl border p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    active
+                      ? "border-primary bg-primary/[0.04] shadow-sm ring-1 ring-primary/30"
+                      : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                  )}
+                >
+                  {/* Visual Preview Miniature */}
+                  <div
                     className={cn(
-                      "group relative flex flex-col text-left rounded-xl border p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                      active
-                        ? "border-primary bg-primary/[0.04] shadow-sm ring-1 ring-primary/30"
-                        : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                      "relative mb-3 h-24 w-full overflow-hidden rounded-lg border p-2 flex gap-1.5 transition-transform duration-200 group-hover:scale-[1.02]",
+                      opt.preview.bg
                     )}
                   >
-                    {/* Visual Preview Miniature */}
-                    <div
-                      className={cn(
-                        "relative mb-3 h-24 w-full overflow-hidden rounded-lg border p-2 flex gap-1.5 transition-transform duration-200 group-hover:scale-[1.02]",
-                        opt.preview.bg
-                      )}
-                    >
-                      {/* Sidebar */}
-                      <div className={cn("w-1/4 h-full rounded flex flex-col gap-1 p-1 border", opt.preview.sidebar)}>
-                        <div className={cn("h-1.5 w-3/4 rounded-sm", opt.preview.accent)} />
-                        <div className={cn("h-1 w-full rounded-sm opacity-60", opt.preview.muted)} />
-                        <div className={cn("h-1 w-2/3 rounded-sm opacity-60", opt.preview.muted)} />
-                      </div>
-                      {/* Main canvas */}
-                      <div className="flex-1 flex flex-col gap-1.5">
-                        <div className={cn("h-2.5 w-1/2 rounded-sm", opt.preview.text)} />
-                        <div className={cn("flex-1 rounded p-1.5 flex flex-col justify-between border", opt.preview.card)}>
-                          <div className={cn("h-1.5 w-3/4 rounded-sm", opt.preview.muted)} />
-                          <div className="flex items-center gap-1">
-                            <div className={cn("h-1 w-1/3 rounded-sm", opt.preview.muted)} />
-                            <div className={cn("h-1 w-1/4 rounded-sm", opt.preview.accent)} />
-                          </div>
+                    {/* Sidebar */}
+                    <div className={cn("w-1/4 h-full rounded flex flex-col gap-1 p-1 border", opt.preview.sidebar)}>
+                      <div className={cn("h-1.5 w-3/4 rounded-sm", opt.preview.accent)} />
+                      <div className={cn("h-1 w-full rounded-sm opacity-60", opt.preview.muted)} />
+                      <div className={cn("h-1 w-2/3 rounded-sm opacity-60", opt.preview.muted)} />
+                    </div>
+                    {/* Main canvas */}
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <div className={cn("h-2.5 w-1/2 rounded-sm", opt.preview.text)} />
+                      <div className={cn("flex-1 rounded p-1.5 flex flex-col justify-between border", opt.preview.card)}>
+                        <div className={cn("h-1.5 w-3/4 rounded-sm", opt.preview.muted)} />
+                        <div className="flex items-center gap-1">
+                          <div className={cn("h-1 w-1/3 rounded-sm", opt.preview.muted)} />
+                          <div className={cn("h-1 w-1/4 rounded-sm", opt.preview.accent)} />
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
-                        <span className={cn("text-sm font-semibold", active ? "text-foreground" : "text-muted-foreground")}>
-                          {opt.label}
-                        </span>
-                      </div>
-                      {active && (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                          <Check className="h-3 w-3 stroke-[2.5]" />
-                        </div>
-                      )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-sm font-semibold", active ? "text-foreground" : "text-muted-foreground")}>
+                        {opt.label}
+                      </span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      {opt.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground pt-1">
-              {mounted && theme === "system"
-                ? "FinanceFlow will automatically switch between light and dark mode to match your system preferences."
-                : mounted && theme === "dark"
-                ? "Dark mode is currently active, providing high contrast and low glare in dim environments."
-                : "Light mode is currently active, optimized for bright environments."}
-            </p>
+                    {active && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-3 w-3 stroke-[2.5]" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                    {opt.description}
+                  </p>
+                </button>
+              );
+            })}
           </div>
+
+          <p className="text-xs text-muted-foreground pt-1">
+            {mounted && theme === "system"
+              ? "FinanceFlow will automatically switch between light and dark mode to match your system preferences."
+              : mounted && theme === "dark"
+              ? "Dark mode is currently active, providing high contrast and low glare in dim environments."
+              : "Light mode is currently active, optimized for bright environments."}
+          </p>
         </div>
-      </Card>
-    </div>
+      </SettingsRow>
+    </SettingsSection>
   );
 }

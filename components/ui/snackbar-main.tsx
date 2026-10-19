@@ -34,7 +34,7 @@ export function Snackbar() {
   const { icon: Icon, className, iconClass } = CONFIG[type];
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="fixed top-4 left-4 z-50 animate-in fade-in slide-in-from-left-2 duration-200">
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg backdrop-blur-sm text-sm font-medium ${className}`}>
         <Icon className={`h-4 w-4 shrink-0 ${iconClass}`} />
         <span>{message}</span>

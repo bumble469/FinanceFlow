@@ -250,6 +250,13 @@ enum TwoFactorMethod {
   SMS
 }
 
+enum PreferenceModule {
+  CONNECTIONS
+  NOTIFICATIONS
+  APPEARANCE
+  GENERAL
+}
+
 //////////////////////
 // AUTH / IDENTITY (unchanged)
 //////////////////////
@@ -279,6 +286,7 @@ model User {
   uploadedDocuments   WorkItemDocument[]
   notifications Notification[]
   emailNotificationPlans UserEmailNotificationPlan[]
+  preferences  UserPreference[]
   stallMembers StallMember[]
   sentMessages Message[]
   groupReads   GroupRead[]
@@ -325,6 +333,21 @@ model TwoFactorBackupCode {
 
   @@index([userId])
   @@map("two_factor_backup_codes")
+}
+
+model UserPreference {
+  id       String            @id @default(uuid())
+  userId   String
+  module   PreferenceModule
+  settings Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, module])
+  @@index([userId])
+  @@map("user_preferences")
 }
 
 model TwoFactorChallenge {

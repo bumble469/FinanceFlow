@@ -537,3 +537,17 @@ export interface AccountSubscription {
   currentPeriodEnd: string;
   cancelAtPeriodEnd: boolean;
 }
+
+export interface ConnectionPrefs {
+  autoConnectWithCoworkers: boolean;
+  messageSnackbarEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+  unreadBadgeEnabled: boolean;
+}
+
+export const DEFAULT_CONNECTION_PREFS: ConnectionPrefs = {
+  autoConnectWithCoworkers: true,
+  messageSnackbarEnabled: true,
+  emailNotificationsEnabled: true,
+  unreadBadgeEnabled: true,
+};
