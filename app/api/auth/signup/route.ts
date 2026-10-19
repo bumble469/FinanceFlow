@@ -14,6 +14,11 @@ interface SignupRequestBody {
   accountType?: AccountType;
 }
 
+function defaultAccountName(name?: string | null, email?: string): string {
+  const base = name?.trim() || email?.split('@')[0];
+  return base ? `${base}'s Account` : 'My Account';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SignupRequestBody;
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
       });
       await prisma.account.updateMany({
         where: { userId: existingUser.id },
-        data: { name: body.accountName || 'My Account', type: accountType },
+        data: { name: body.accountName?.trim() || defaultAccountName(body.name, email), type: accountType },
       });
       userId = existingUser.id;
     } else {
@@ -97,7 +102,7 @@ export async function POST(request: NextRequest) {
       await prisma.account.create({
         data: {
           userId: user.id,
-          name: body.accountName || 'My Account',
+          name: body.accountName?.trim() || defaultAccountName(body.name, email),
           type: accountType,
         },
       });

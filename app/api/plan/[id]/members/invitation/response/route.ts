@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { notify } from "@/lib/notify";
+import { autoConnectWithPlanMembers } from "@/lib/auto-connect";
 
 export async function POST(
   req: NextRequest,
@@ -67,11 +69,28 @@ export async function POST(
         },
       });
 
+      const planForNotify = await prisma.workItem.findUnique({
+        where: { id: planId },
+        select: { name: true },
+      });
+
+      await notify({
+        workItemId: planId,
+        userIds: [invitation.invitedById],
+        scope: "PERSONAL",
+        type: "INVITATION",
+        title: "Invitation declined",
+        message: `${user.name ?? "Someone"} declined your invitation to join ${planForNotify?.name ?? "your plan"}.`,
+        entityType: "invitation",
+        entityId: invitationId,
+      });
+
       return NextResponse.json({
         success: true,
         message: "Invitation rejected successfully",
       });
     }
+
 
     if (action === "ACCEPT") {
       await prisma.$transaction(async (tx) => {
@@ -103,6 +122,27 @@ export async function POST(
             respondedAt: new Date(),
           },
         });
+      });
+
+      // Auto-connect the new member with the plan's other members.
+      // Runs AFTER the member row exists, so the new member is picked up as a
+      // counterpart by any later auto-connect too.
+      await autoConnectWithPlanMembers({ workItemId: planId, userId: user.sub });
+
+      const planForNotify = await prisma.workItem.findUnique({
+        where: { id: planId },
+        select: { name: true },
+      });
+
+      await notify({
+        workItemId: planId,
+        userIds: [invitation.invitedById],
+        scope: "PERSONAL",
+        type: "INVITATION",
+        title: "Invitation accepted",
+        message: `${user.name ?? "Someone"} accepted your invitation to join ${planForNotify?.name ?? "your plan"}.`,
+        entityType: "invitation",
+        entityId: invitationId,
       });
 
       return NextResponse.json({

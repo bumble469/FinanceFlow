@@ -68,6 +68,7 @@ export function PlansPage() {
 
   const [collaborations, setCollaborations] = useState<Plan[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
+  const [tab, setTab] = useState("my-plans");
 
   const [subscription, setSubscription] = useState<any>(null);
 
@@ -76,6 +77,13 @@ export function PlansPage() {
     authClient.request("/api/subscription")
       .then((res) => setSubscription(res.data.data ?? null))
       .catch((err) => console.error("Failed to fetch subscription:", err));
+  }, []);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested && ["my-plans", "collaborations", "invitations"].includes(requested)) {
+      setTab(requested);
+    }
   }, []);
 
   const fetchPlans = async () => {
@@ -209,8 +217,7 @@ export function PlansPage() {
         </Tooltip>
       </div>
 
-      <Tabs defaultValue="my-plans" className="space-y-6">
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-6">        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsList className="w-max">
             <TabsTrigger value="my-plans" className="shrink-0 gap-2 px-3 cursor-pointer">
               My Plans

@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authClient } from "@/lib/auth-client";
 import { useFinancialStore } from "@/lib/store";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useConnectionPrefs } from "@/hooks/use-connection-prefs";
 import { NotificationsDialog } from "@/components/dashboard/dialogs/notifications-dialog";
 
 const NAV_ITEMS = [
@@ -28,6 +29,8 @@ export function GlobalSidebar() {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
     const { hasUnseen, markSeen } = useWhatsNew();
+    const { unreadCount, unreadGeneral, unreadPersonal, general, personal, loading, fetchTab, markRead, markAllRead } = useNotifications();
+    const { prefs, unreadCount: connectionUnread } = useConnectionPrefs();
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -42,10 +45,8 @@ export function GlobalSidebar() {
                     headline: p.headline,
                 });
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [currentUser?.id]);
-
-    const { unreadCount, unreadGeneral, unreadPersonal, general, personal, loading, fetchTab, markRead, markAllRead } = useNotifications();
 
     const initials =
         currentUser?.name?.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() ||
@@ -91,19 +92,28 @@ export function GlobalSidebar() {
                 {NAV_ITEMS.map((item) => {
                     const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                     const Icon = item.icon;
+                    const badge =
+                        item.href === "/connections" && prefs?.unreadBadgeEnabled && connectionUnread > 0
+                            ? connectionUnread
+                            : 0;
                     return (
                         <button
                             key={item.href}
                             title={item.label}
                             onClick={() => router.push(item.href)}
                             className={cn(
-                                "flex h-11 w-11 items-center justify-center rounded-xl transition-colors cursor-pointer",
+                                "relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors cursor-pointer",
                                 isActive
                                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
                                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                             )}
                         >
                             <Icon className="h-5 w-5" />
+                            {badge > 0 && (
+                                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                                    {badge > 99 ? "99+" : badge}
+                                </span>
+                            )}
                         </button>
                     );
                 })}

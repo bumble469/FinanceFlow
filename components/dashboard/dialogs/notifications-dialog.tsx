@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Bell, CheckCheck } from "lucide-react";
@@ -40,9 +41,11 @@ function timeAgo(iso: string) {
 function NotificationList({
   items,
   onMarkRead,
+  onNavigate,
 }: {
   items: NotificationItem[];
   onMarkRead: (id: string) => void;
+  onNavigate?: (n: NotificationItem) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -56,7 +59,10 @@ function NotificationList({
       {items.map((n) => (
         <button
           key={n.id}
-          onClick={() => !n.isRead && onMarkRead(n.id)}
+          onClick={() => {
+            if (!n.isRead) onMarkRead(n.id);
+            onNavigate?.(n);
+          }}
           className={cn(
             "w-full text-left rounded-lg border px-3 py-2.5 transition-colors",
             n.isRead ? "border-border bg-card" : "border-primary/30 bg-primary/5 hover:bg-primary/10"
@@ -74,6 +80,7 @@ function NotificationList({
   );
 }
 
+
 export function NotificationsDialog({
   open,
   onOpenChange,
@@ -88,10 +95,16 @@ export function NotificationsDialog({
   onMarkAllRead,
 }: NotificationsDialogProps) {
   const [tab, setTab] = useState<"GENERAL" | "PERSONAL">("PERSONAL");
+  const router = useRouter();
 
+  const handleNavigate = (n: NotificationItem) => {
+    if (n.type === "INVITATION" && n.entityType === "invitation") {
+      onOpenChange(false);
+      router.push("/plans?tab=invitations");
+    }
+  };
   useEffect(() => {
     if (open) onLoadTab(tab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tab]);
 
   return (
@@ -137,7 +150,7 @@ export function NotificationsDialog({
           {loading ? (
             <p className="text-sm text-muted-foreground text-center py-12">Loading...</p>
           ) : (
-            <NotificationList items={tab === "GENERAL" ? general : personal} onMarkRead={onMarkRead} />
+            <NotificationList items={tab === "GENERAL" ? general : personal} onMarkRead={onMarkRead} onNavigate={handleNavigate} />
           )}
         </div>
       </DialogContent>

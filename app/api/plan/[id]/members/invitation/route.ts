@@ -113,16 +113,25 @@ export async function POST(
       },
     });
 
+    const workItem = await prisma.workItem.findUnique({
+      where: { id: planId },
+      select: { name: true },
+    });
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
     await notify({
-      workItemId: planId,
       userIds: [invitedUser.id],
       scope: "PERSONAL",
       type: "INVITATION",
-      title: "You've been invited to a project",
+      title: `You've been invited to join ${workItem?.name ?? "a plan"}`,
       message: `${authUser.name ?? "Someone"} invited you to join as ${role ?? "a member"}.`,
       entityType: "invitation",
       entityId: invitation.id,
+      linkUrl: `${appUrl}/plans?tab=invitations`,
+      planName: workItem?.name,
     });
+
 
     return NextResponse.json(
       {

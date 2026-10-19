@@ -13,6 +13,7 @@ import { EmptyChatState } from "@/components/connections/components/empty-chat-s
 import { GroupsTab } from "@/components/connections/components/GroupsTab";
 import { RequestsTab } from "@/components/connections/components/RequestsTab";
 import { getSocket } from "@/lib/socket-client";
+import { useConnectionStore } from "@/lib/connection-store";
 
 interface ConnectionItem {
   connectionId: string;
@@ -40,10 +41,14 @@ export function ConnectionsPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const isChatTab = tab === "all" || tab === "direct";
   const selectedConnectionIdRef = useRef<string | null>(null);
+  const setActiveConnectionId = useConnectionStore((s) => s.setActiveConnectionId);
 
   useEffect(() => {
     selectedConnectionIdRef.current = selected?.connectionId || null;
-  }, [selected]);
+    // Let the global notifier know which conversation is on screen, so it
+    // doesn't raise a snackbar for the message you're already looking at.
+    setActiveConnectionId(selected?.connectionId || null);
+  }, [selected, setActiveConnectionId]);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -208,7 +213,7 @@ export function ConnectionsPage() {
     >
       <button
         title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
-        onClick={() => setIsFullscreen((f) => !f)}
+        onClick={toggleFullscreen}
         className="absolute top-2.5 right-2.5 z-20 flex h-7 w-7 items-center justify-center rounded-md bg-background/80 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer backdrop-blur-sm"
       >
         {isFullscreen

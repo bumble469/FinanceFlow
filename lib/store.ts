@@ -55,9 +55,6 @@ interface AccountStore {
   currentPlanMeta: CurrentPlanMeta | null;
   setCurrentPlanMeta: (meta: CurrentPlanMeta | null) => void;
 
-  autoConnectWithCoworkers: boolean;
-  setAutoConnectWithCoworkers: (value: boolean) => void;
-
 }
 
 // ================= DASHBOARD STORE =================
@@ -450,16 +447,11 @@ export const useFinancialStore = create<FinancialStore>()(
           departments: [],
           modules: [],
         }),
-
-      // ACCOUNT
-      autoConnectWithCoworkers: true,
-      setAutoConnectWithCoworkers: (val) => set({ autoConnectWithCoworkers: val }),
     }),
     {
       name: "financial-store",
       partialize: (state) => ({
         currentUser: state.currentUser,
-        autoConnectWithCoworkers: state.autoConnectWithCoworkers
       }),
 
     }
