@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { getPlanAccess } from "@/lib/get-plan-access";
 import { canAssignRole } from "@/lib/permissions";
+import { autoConnectWithPlanMembers } from "@/lib/auto-connect";
 
 // GET: list all members of a plan
 export async function GET(
@@ -198,33 +199,7 @@ export async function POST(
     });
 
     // --- AUTO-CONNECT LOGIC ---
-    const addedUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { autoConnectWithCoworkers: true }
-    });
-
-    if (addedUser?.autoConnectWithCoworkers) {
-      const otherMembers = await prisma.workItemMember.findMany({
-        where: {
-          workItemId: planId,
-          userId: { not: userId },
-          user: { autoConnectWithCoworkers: true }
-        },
-        select: { userId: true }
-      });
-
-      if (otherMembers.length > 0) {
-        const connectionsToCreate = otherMembers.map((member) => {
-          const [u1, u2] = [userId, member.userId].sort();
-          return { user1Id: u1, user2Id: u2 };
-        });
-
-        await prisma.connection.createMany({
-          data: connectionsToCreate,
-          skipDuplicates: true
-        });
-      }
-    }
+    await autoConnectWithPlanMembers({ workItemId: planId, userId });
 
     // 2. Create DepartmentMember entries (if any)
     if (departmentIds.length > 0) {

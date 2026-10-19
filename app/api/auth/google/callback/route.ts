@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
         await prisma.account.create({
           data: {
             userId: user.id,
-            name: `${name || 'My'} Account`,
+            name: name ? `${name}'s Account` : 'My Account',
             type: AccountType.INDIVIDUAL,
           },
         });

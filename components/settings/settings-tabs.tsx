@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogoutSection } from "@/components/settings/logout-section";
@@ -9,12 +8,15 @@ import { ProfileSection, PreferencesSection } from "@/components/settings/profil
 import { AppearanceSection } from "@/components/settings/appearance-section";
 import { AccountDetailsSection, SecuritySection, DangerZoneSection } from "@/components/settings/account-section";
 import { TwoFactorSection } from "@/components/settings/two-factor-section";
+import { SettingsSection, SettingsRow, SettingsMessage } from "@/components/settings/settings-layout";
 import { authClient } from "@/lib/auth-client";
-import type { AccountSubscription } from "@/lib/types";
+import type { AccountSubscription, ConnectionPrefs } from "@/lib/types";
+import { DEFAULT_CONNECTION_PREFS } from "@/lib/types";
 import Link from "next/link";
 import { useFinancialStore } from "@/lib/store";
 import { Switch } from "@/components/ui/switch";
-
+import { useSnackbar } from "@/lib/useSnackbar";
+import { useConnectionStore } from "@/lib/connection-store";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -33,10 +35,22 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   PENDING: "secondary",
 };
 
+// Text tabs with a soft pill on the active one
+const TAB_LIST =
+  "h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0";
+const TAB_TRIGGER =
+  "h-auto flex-none cursor-pointer rounded-md border-0 px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-muted";
+
 export function SettingsTabs() {
   const [subscription, setSubscription] = useState<AccountSubscription | null>(null);
   const [loadingSub, setLoadingSub] = useState(true);
-  const { autoConnectWithCoworkers, setAutoConnectWithCoworkers } = useFinancialStore();
+  const { show } = useSnackbar();
+
+  const [connPrefs, setConnPrefs] = useState<ConnectionPrefs>(DEFAULT_CONNECTION_PREFS);
+  const [loadingConnPrefs, setLoadingConnPrefs] = useState(true);
+  // Keep the Zustand store in sync so ConnectionNotifier always reads the
+  // latest preference values without needing a page reload.
+  const setStorePrefs = useConnectionStore((s) => s.setPrefs);
 
   useEffect(() => {
     authClient.request("/api/subscription")
@@ -45,16 +59,51 @@ export function SettingsTabs() {
       .finally(() => setLoadingSub(false));
   }, []);
 
-  const handleToggleAutoConnect = async (checked: boolean) => {
-    setAutoConnectWithCoworkers(checked);
+  // Load the Connections preferences from the server (they are persisted
+  // per-user, not in the local zustand store).
+  useEffect(() => {
+    let cancelled = false;
+
+    authClient
+      .request("/api/settings/connections", { method: "GET" })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.data?.data) setConnPrefs(res.data.data as ConnectionPrefs);
+      })
+      .catch((err) => console.error("Failed to load connection settings:", err))
+      .finally(() => {
+        if (!cancelled) setLoadingConnPrefs(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Save one Connections preference. Optimistic update with rollback on error.
+   */
+  const saveConnPref = async <K extends keyof ConnectionPrefs>(
+    key: K,
+    value: ConnectionPrefs[K]
+  ) => {
+    const previous = connPrefs;
+    const updated = { ...connPrefs, [key]: value };
+    // Optimistic update in local state AND the global Zustand store so the
+    // ConnectionNotifier (which reads from the store) reacts immediately.
+    setConnPrefs(updated);
+    setStorePrefs(updated);
+
     try {
       await authClient.request("/api/settings/connections", {
         method: "PATCH",
-        data: JSON.stringify({ autoConnectWithCoworkers: checked }),
+        data: { [key]: value },
       });
     } catch (error) {
-      console.error("Failed to update auto connect preference", error);
-      setAutoConnectWithCoworkers(!checked);
+      console.error("Failed to update connection setting", error);
+      setConnPrefs(previous);
+      setStorePrefs(previous);
+      show("Failed to save setting. Please try again.", "error");
     }
   };
 
@@ -65,24 +114,24 @@ export function SettingsTabs() {
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid grid-cols-5 w-full sm:w-auto">
-          <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
-          <TabsTrigger value="account" className="cursor-pointer">Account</TabsTrigger>
-          <TabsTrigger value="appearance" className="cursor-pointer">Appearance</TabsTrigger>
-          <TabsTrigger value="subscription" className="cursor-pointer">Subscription</TabsTrigger>
-          <TabsTrigger value="connections" className="cursor-pointer">Connections</TabsTrigger>
+      <Tabs defaultValue="general" className="gap-8">
+        <TabsList className={TAB_LIST}>
+          <TabsTrigger value="general" className={TAB_TRIGGER}>General</TabsTrigger>
+          <TabsTrigger value="account" className={TAB_TRIGGER}>Account</TabsTrigger>
+          <TabsTrigger value="appearance" className={TAB_TRIGGER}>Appearance</TabsTrigger>
+          <TabsTrigger value="subscription" className={TAB_TRIGGER}>Subscription</TabsTrigger>
+          <TabsTrigger value="connections" className={TAB_TRIGGER}>Connections</TabsTrigger>
         </TabsList>
 
         {/* GENERAL TAB */}
-        <TabsContent value="general" className="space-y-6">
+        <TabsContent value="general" className="space-y-10">
           <ProfileSection />
           <PreferencesSection />
           <LogoutSection />
         </TabsContent>
 
         {/* ACCOUNT TAB */}
-        <TabsContent value="account" className="space-y-6">
+        <TabsContent value="account" className="space-y-10">
           <AccountDetailsSection />
           <SecuritySection />
           <TwoFactorSection />
@@ -90,96 +139,128 @@ export function SettingsTabs() {
         </TabsContent>
 
         {/* APPEARANCE TAB */}
-        <TabsContent value="appearance" className="space-y-6">
+        <TabsContent value="appearance" className="space-y-10">
           <AppearanceSection />
         </TabsContent>
 
         {/* SUBSCRIPTION TAB */}
-        <TabsContent value="subscription" className="space-y-6">
-          <Card className="border border-border bg-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-foreground">Subscription</h2>
-              <Link href="/settings/subscription-plan" className="text-sm text-primary hover:underline font-medium">
+        <TabsContent value="subscription" className="space-y-10">
+          <SettingsSection
+            title="Subscription"
+            description="Your current plan and billing period."
+            action={
+              <Link href="/settings/subscription-plan" className="text-sm font-medium text-primary hover:underline">
                 Change plan →
               </Link>
-            </div>
-
+            }
+          >
             {loadingSub ? (
-              <p className="text-sm text-muted-foreground">Loading subscription details...</p>
+              <SettingsMessage>Loading subscription details...</SettingsMessage>
             ) : !subscription ? (
-              <p className="text-muted-foreground">
+              <SettingsMessage>
                 No active subscription found.{" "}
                 <Link href="/settings/subscription-plan" className="text-primary hover:underline">
                   Choose a plan
                 </Link>
-              </p>
+              </SettingsMessage>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <p className="text-lg font-semibold text-foreground">{subscription.plan.name}</p>
-                  <Badge variant={STATUS_VARIANT[subscription.status] ?? "outline"}>
-                    {subscription.status}
-                  </Badge>
-                  {subscription.cancelAtPeriodEnd && (
-                    <Badge variant="outline">Cancels at period end</Badge>
-                  )}
-                </div>
+              <>
+                <SettingsRow label="Plan">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">{subscription.plan.name}</p>
+                    <Badge variant={STATUS_VARIANT[subscription.status] ?? "outline"}>
+                      {subscription.status}
+                    </Badge>
+                    {subscription.cancelAtPeriodEnd && (
+                      <Badge variant="outline">Cancels at period end</Badge>
+                    )}
+                  </div>
+                </SettingsRow>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Billing</p>
-                    <p className="text-foreground font-medium">
-                      {subscription.amount === 0
-                        ? "Free"
-                        : `₹${subscription.amount.toLocaleString("en-IN")} / ${subscription.billingInterval.toLowerCase().replace("_", "-")}`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Claimed on</p>
-                    <p className="text-foreground font-medium">{formatDate(subscription.startedAt)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Current period started</p>
-                    <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodStart)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Valid till</p>
-                    <p className="text-foreground font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
-                  </div>
-                </div>
+                <SettingsRow label="Billing">
+                  <p className="text-sm text-foreground">
+                    {subscription.amount === 0
+                      ? "Free"
+                      : `₹${subscription.amount.toLocaleString("en-IN")} / ${subscription.billingInterval.toLowerCase().replace("_", "-")}`}
+                  </p>
+                </SettingsRow>
 
-                <div className="pt-4 border-t border-border grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Projects</p>
-                    <p className="text-foreground font-medium">{subscription.plan.maxProjects ?? "Unlimited"}</p>
+                <SettingsRow label="Claimed on">
+                  <p className="text-sm text-foreground">{formatDate(subscription.startedAt)}</p>
+                </SettingsRow>
+
+                <SettingsRow label="Current period started">
+                  <p className="text-sm text-foreground">{formatDate(subscription.currentPeriodStart)}</p>
+                </SettingsRow>
+
+                <SettingsRow label="Valid till">
+                  <p className="text-sm text-foreground">{formatDate(subscription.currentPeriodEnd)}</p>
+                </SettingsRow>
+
+                <SettingsRow label="Plan limits">
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Projects</p>
+                      <p className="font-medium text-foreground">{subscription.plan.maxProjects ?? "Unlimited"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Events</p>
+                      <p className="font-medium text-foreground">{subscription.plan.maxEvents ?? "Unlimited"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total work items</p>
+                      <p className="font-medium text-foreground">{subscription.plan.maxTotalWorkItems ?? "Unlimited"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Events</p>
-                    <p className="text-foreground font-medium">{subscription.plan.maxEvents ?? "Unlimited"}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Total work items</p>
-                    <p className="text-foreground font-medium">{subscription.plan.maxTotalWorkItems ?? "Unlimited"}</p>
-                  </div>
-                </div>
-              </div>
+                </SettingsRow>
+              </>
             )}
-          </Card>
+          </SettingsSection>
         </TabsContent>
-        <TabsContent value="connections" className="space-y-6">
-          <div className="flex items-center justify-between py-4 border-y border-border mb-4">
-            <div>
-              <h3 className="text-sm font-medium text-foreground">Auto-connect with Coworkers</h3>
-              <p className="text-sm text-muted-foreground">
-                Automatically connect with people added to your plans and work items.
-              </p>
-            </div>
-            <Switch
-              className="cursor-pointer"
-              checked={autoConnectWithCoworkers}
-              onCheckedChange={handleToggleAutoConnect}
-            />
-          </div>
+
+        {/* CONNECTIONS TAB */}
+        <TabsContent value="connections" className="space-y-10">
+          <SettingsSection title="Connections" description="Control how you connect with people.">
+            <SettingsRow
+              action
+              label="Auto-connect with Coworkers"
+              description="Automatically connect with people added to your plans and work items."
+            >
+              <Switch
+                className="cursor-pointer"
+                checked={connPrefs.autoConnectWithCoworkers}
+                disabled={loadingConnPrefs}
+                onCheckedChange={(v) => saveConnPref("autoConnectWithCoworkers", v)}
+              />
+            </SettingsRow>
+
+            <SettingsRow
+              action
+              label="Message Notifications"
+              description="Show a snackbar at the top-left when a new message arrives."
+            >
+              <Switch
+                className="cursor-pointer"
+                checked={connPrefs.messageSnackbarEnabled}
+                disabled={loadingConnPrefs}
+                onCheckedChange={(v) => saveConnPref("messageSnackbarEnabled", v)}
+              />
+            </SettingsRow>
+
+
+            <SettingsRow
+              action
+              label="Email Notifications"
+              description="Receive email for connection requests and messages."
+            >
+              <Switch
+                className="cursor-pointer"
+                checked={connPrefs.emailNotificationsEnabled}
+                disabled={loadingConnPrefs}
+                onCheckedChange={(v) => saveConnPref("emailNotificationsEnabled", v)}
+              />
+            </SettingsRow>
+          </SettingsSection>
         </TabsContent>
       </Tabs>
     </div>

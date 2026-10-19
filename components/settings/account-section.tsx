@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import {
+  SettingsSection, SettingsRow, SettingsFooter, SettingsMessage, SETTINGS_FIELD,
+} from "@/components/settings/settings-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,54 +62,59 @@ export function AccountDetailsSection() {
     }
   };
 
-  if (!account) {
-    return (
-      <Card className="border border-border bg-card p-4 sm:p-6">
-        <p className="text-sm text-muted-foreground">Loading account...</p>
-      </Card>
-    );
-  }
+  if (!account) return <SettingsMessage>Loading account...</SettingsMessage>;
 
   return (
-    <Card className="border border-border bg-card p-4 sm:p-6">
-      <h2 className="text-xl font-semibold text-foreground">Account</h2>
-      <p className="mb-6 text-sm text-muted-foreground">Your workspace name and type.</p>
+    <SettingsSection title="Account" description="Your workspace name and type.">
+      <SettingsRow label="Account name" htmlFor="account-name">
+        <Input
+          id="account-name"
+          className={SETTINGS_FIELD}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          disabled={saving}
+        />
+      </SettingsRow>
 
-      <div className="space-y-5">
-        <div className="space-y-2">
-          <Label>Account name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} disabled={saving} />
+      <SettingsRow label="Account type">
+        <div className="grid grid-cols-2 gap-3">
+          {TYPES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              disabled={saving}
+              onClick={() => setType(t.value)}
+              className={cn(
+                "h-10 cursor-pointer rounded-lg border px-3 text-sm font-medium shadow-xs transition-colors",
+                type === t.value
+                  ? "border-foreground bg-muted/40 text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
+      </SettingsRow>
 
-        <div className="space-y-2">
-          <Label>Account type</Label>
-          <div className="grid grid-cols-3 gap-3">
-            {TYPES.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                disabled={saving}
-                onClick={() => setType(t.value)}
-                className={cn(
-                  "cursor-pointer rounded-lg border px-3 py-3 text-sm font-medium transition-colors",
-                  type === t.value
-                    ? "border-foreground bg-muted/40 text-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button className="cursor-pointer" onClick={handleSave} disabled={!dirty || !name.trim() || saving}>
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save changes"}
-          </Button>
-        </div>
-      </div>
-    </Card>
+      <SettingsFooter>
+        <Button
+          variant="outline"
+          className="cursor-pointer"
+          disabled={!dirty || saving}
+          onClick={() => {
+            setName(account.name);
+            setType(account.type);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button className="cursor-pointer" onClick={handleSave} disabled={!dirty || !name.trim() || saving}>
+          {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save changes"}
+        </Button>
+      </SettingsFooter>
+    </SettingsSection>
   );
 }
 
@@ -134,38 +141,33 @@ export function SecuritySection() {
 
   return (
     <>
-      <Card className="border border-border bg-card p-4 sm:p-6">
-        <h2 className="text-xl font-semibold text-foreground">Security</h2>
-        <p className="mb-6 text-sm text-muted-foreground">Password and sign-in.</p>
-
-        {hasPassword === false ? (
-          <p className="mb-6 text-sm text-muted-foreground">
-            You sign in with Google, so there is no password to change.
-          </p>
-        ) : hasPassword ? (
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">Password</p>
-              <p className="text-xs text-muted-foreground">
-                We'll email you a code to confirm before it's changed.
-              </p>
-            </div>
+      <SettingsSection title="Security" description="Password and sign-in.">
+        <SettingsRow
+          action
+          label="Password"
+          description={
+            hasPassword === false
+              ? "You sign in with Google, so there is no password to change."
+              : "We'll email you a code to confirm it's you before you can change it."
+          }
+        >
+          {hasPassword ? (
             <Button variant="outline" className="cursor-pointer" onClick={() => setDialogOpen(true)}>
               Change password
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </SettingsRow>
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-foreground">Sign out of all devices</p>
-            <p className="text-xs text-muted-foreground">You'll need to log in again everywhere, including here.</p>
-          </div>
+        <SettingsRow
+          action
+          label="Sign out of all devices"
+          description="You'll need to log in again everywhere, including here."
+        >
           <Button variant="outline" className="cursor-pointer" onClick={handleSignOutAll}>
             Sign out everywhere
           </Button>
-        </div>
-      </Card>
+        </SettingsRow>
+      </SettingsSection>
 
       <ChangePasswordDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
@@ -208,17 +210,17 @@ export function DangerZoneSection() {
 
   return (
     <>
-      <Card className="border border-destructive/40 bg-card p-4 sm:p-6">
-        <h2 className="text-xl font-semibold text-destructive">Danger zone</h2>
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Permanently delete your account, plans and messages. This can't be undone.
-          </p>
+      <SettingsSection title="Danger zone" tone="danger">
+        <SettingsRow  
+          action
+          label="Delete account"
+          description="Permanently delete your account, plans and messages. This can't be undone."
+        >
           <Button variant="destructive" className="cursor-pointer" onClick={() => setOpen(true)}>
             Delete account
           </Button>
-        </div>
-      </Card>
+        </SettingsRow>
+      </SettingsSection>
 
       <Dialog open={open} onOpenChange={(o) => !deleting && setOpen(o)}>
         <DialogContent>

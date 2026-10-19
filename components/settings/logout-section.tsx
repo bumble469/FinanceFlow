@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { SettingsSection, SettingsRow } from "@/components/settings/settings-layout";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,42 +47,36 @@ export function LogoutSection() {
 
   return (
     <>
-      <Card className="border border-border bg-card p-6">
-        <h2 className="text-xl font-semibold text-foreground mb-1">Session</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Manage your active sessions and sign out of your account.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3">
+            <SettingsSection
+        title="Session"
+        description="Manage your active sessions and sign out of your account."
+      >
+        <SettingsRow action label="Log out" description="Sign out of this device.">
           <Button
             variant="outline"
-            className="
-                    flex items-center gap-2 cursor-pointer
-                    hover:bg-gray-200
-                    dark:hover:bg-muted
-                    hover:text-foreground
-                "
-            onClick={() => setOpenDialog('logout')}
+            className="flex cursor-pointer items-center gap-2 hover:bg-gray-200 hover:text-foreground dark:hover:bg-muted"
+            onClick={() => setOpenDialog("logout")}
           >
             <LogOut className="h-4 w-4" />
             Log out
           </Button>
+        </SettingsRow>
 
+        <SettingsRow
+          action
+          label="Log out of all devices"
+          description="End every active session. You'll need to log in again everywhere."
+        >
           <Button
             variant="destructive"
-            className="
-                    flex items-center gap-2 cursor-pointer
-                    hover:bg-destructive/90
-                    dark:hover:bg-destructive/80
-                    hover:text-destructive-foreground
-                "
-            onClick={() => setOpenDialog('logout-all')}
+            className="flex cursor-pointer items-center gap-2 hover:bg-destructive/90 hover:text-destructive-foreground dark:hover:bg-destructive/80"
+            onClick={() => setOpenDialog("logout-all")}
           >
             <MonitorX className="h-4 w-4" />
             Log out of all devices
           </Button>
-        </div>
-      </Card>
+        </SettingsRow>
+      </SettingsSection>
 
       {/* Logout Dialog */}
       <Dialog

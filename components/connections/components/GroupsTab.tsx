@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { getSocket } from "@/lib/socket-client";
+import { useConnectionStore } from "@/lib/connection-store";
 import { TabSelector, type ConnectionTab } from "@/components/connections/components/tab-selector";
 import { GroupListItem } from "@/components/connections/components/group-list-item";
 import { GroupPanel } from "@/components/connections/components/group-panel";
@@ -30,10 +31,14 @@ export function GroupsTab({ tab, onTabChange, isFullscreen = false }: GroupsTabP
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const setActiveGroupId = useConnectionStore((s) => s.setActiveGroupId);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
-  }, [selectedId]);
+    // Let the global notifier know which group is on screen, so it doesn't
+    // raise a snackbar for the message you're already looking at.
+    setActiveGroupId(selectedId);
+  }, [selectedId, setActiveGroupId]);
 
   const handleRead = useCallback((workItemId: string) => {
     setGroups((prev) => prev.map((g) => (g.workItemId === workItemId ? { ...g, unreadCount: 0 } : g)));

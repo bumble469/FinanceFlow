@@ -7,7 +7,8 @@ import { useEffect } from "react";
 import { getSocket } from "@/lib/socket-client";
 import { useChatStore } from "@/lib/chat-store";
 import { useFinancialStore } from "@/lib/store";
-
+import { useConnectionPrefs } from "@/hooks/use-connection-prefs";
+import { ConnectionNotifier } from "@/components/connections/components/connection-notifier";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,9 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
   const currentUser = useFinancialStore((s) => s.currentUser);
   const appendMessage = useChatStore((s) => s.appendMessage);
   const markOwnMessagesRead = useChatStore((s) => s.markOwnMessagesRead);
+
+  // Loads the Connections preferences and keeps the sidebar badge count fresh.
+  useConnectionPrefs();
 
   useEffect(() => {
     const socket = getSocket();
@@ -71,6 +75,7 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
         </main>
       </div>
       <MobileTabBar />
+      <ConnectionNotifier />
     </div>
   );
 }

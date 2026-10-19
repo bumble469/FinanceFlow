@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { emitToUser } from "@/lib/socket-server";
 import type { NotificationType, NotificationScope } from "@prisma/client";
 import { sendEmail, notificationEmailHtml } from "@/lib/email";
+import { getConnectionPrefsForUsers } from "@/lib/user-preferences";
 
 export async function notify({
   workItemId,
@@ -12,8 +13,10 @@ export async function notify({
   message,
   entityType,
   entityId,
+  linkUrl: linkUrlOverride,
+  planName: planNameOverride,
 }: {
-  workItemId?: string; 
+  workItemId?: string;
   userIds: string[];
   scope: NotificationScope;
   type: NotificationType;
@@ -21,14 +24,16 @@ export async function notify({
   message: string;
   entityType?: string;
   entityId?: string;
+  linkUrl?: string;
+  planName?: string | null;
 }) {
   const recipients = Array.from(new Set(userIds)).filter(Boolean);
   if (recipients.length === 0) return;
 
   // 1. Create Notifications in DB
-  await prisma.notification.createMany({
+  const created = await prisma.notification.createManyAndReturn({
     data: recipients.map((userId) => ({
-      workItemId, // if undefined, Prisma ignores it (which is what we want)
+      workItemId, // undefined → stored as NULL (global notification)
       userId,
       scope,
       type,
@@ -40,9 +45,10 @@ export async function notify({
   });
 
   // 2. Emit Real-time Socket Events
-  const createdAt = new Date().toISOString();
-  for (const userId of recipients) {
-    emitToUser(userId, "notification:new", {
+  //    NOTE: the id must be included — the client uses it to mark the item read.
+  for (const row of created) {
+    emitToUser(row.userId, "notification:new", {
+      id: row.id,
       workItemId,
       scope,
       type,
@@ -50,7 +56,8 @@ export async function notify({
       message,
       entityType,
       entityId,
-      createdAt,
+      isRead: false,
+      createdAt: row.createdAt.toISOString(),
     });
   }
 
@@ -69,7 +76,7 @@ export async function notify({
             where: { workItemId },
             select: { id: true },
           }
-        : undefined, 
+        : undefined,
     },
   });
 
@@ -81,19 +88,38 @@ export async function notify({
     : null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  
+
   let linkUrl = appUrl;
-  if (workItemId) {
+  if (linkUrlOverride) {
+    linkUrl = linkUrlOverride;
+  } else if (workItemId) {
     linkUrl = `${appUrl}/plans/${workItemId}`;
   } else if (type.startsWith("CONNECTION")) {
     linkUrl = `${appUrl}/connections`;
   }
 
-  const toSend = eligibleUsers.filter(
-    (u) =>
+  const planName = planNameOverride ?? workItem?.name;
+
+  // Connection-related emails respect the per-user Connections preference.
+  // Fetched in one batch for all recipients.
+  const isConnectionNotification = type.startsWith("CONNECTION");
+  const connectionPrefs = isConnectionNotification
+    ? await getConnectionPrefsForUsers(recipients)
+    : null;
+
+  const toSend = eligibleUsers.filter((u) => {
+    if (isConnectionNotification) {
+      const prefs = connectionPrefs?.get(u.id);
+      // Default to enabled when the user has no saved preference.
+      return prefs?.emailNotificationsEnabled !== false;
+    }
+
+    return (
+      type === "INVITATION" ||
       u.emailNotificationScope === "ALL" ||
       ((u as any).emailNotificationPlans && (u as any).emailNotificationPlans.length > 0)
-  );
+    );
+  });
 
   void Promise.allSettled(
     toSend.map((u) =>
@@ -104,7 +130,7 @@ export async function notify({
         htmlContent: notificationEmailHtml({
           title,
           message,
-          planName: workItem?.name, // Safe to pass undefined here
+          planName,
           appUrl: linkUrl,
         }),
       })
