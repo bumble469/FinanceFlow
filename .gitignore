@@ -37,3 +37,8 @@ next-env.d.ts
 Thumbs.db
 
 /public/uploads
+
+# local-only dev tooling and tests (not part of the deployed app)
+/scripts/
+/lib/analytics/__tests__/
+/lib/csv.test.ts

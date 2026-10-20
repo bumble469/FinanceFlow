@@ -1,9 +1,16 @@
 import { AlertTriangle, Clock, CalendarClock, CheckCircle2 } from "lucide-react";
 import type { Task } from "@/lib/types";
-import { DEADLINE_BUCKET_CONFIG } from "../lib/overview-utils";
+import { DEADLINE_COLORS } from "../lib/chart-palette";
 import { useCountUp, useMountedTransition } from "../hooks/use-count-up";
 
 const BUCKET_ICONS = { overdue: AlertTriangle, today: Clock, week: CalendarClock, completed: CheckCircle2 };
+
+const BUCKET_LABELS = {
+  overdue: "Overdue",
+  today: "Due today",
+  week: "Due this week",
+  completed: "Completed (7d)",
+} as const;
 
 function AnimatedCount({ value }: { value: number }) {
   const animated = useCountUp(value, 700);
@@ -38,18 +45,18 @@ export function TaskDueBuckets({ tasks }: { tasks: Task[] }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         {buckets.map((b) => {
-          const cfg = DEADLINE_BUCKET_CONFIG[b.key];
+          const color = DEADLINE_COLORS[b.key];
           const Icon = BUCKET_ICONS[b.key];
           return (
             <div key={b.key} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: cfg.bg, color: cfg.hex }}>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${color} 14%, transparent)`, color }}>
                 <Icon className="h-4 w-4" />
               </span>
               <div className="min-w-0">
                 <p className="text-lg font-bold text-foreground leading-none">
                   <AnimatedCount value={b.count} />
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{cfg.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{BUCKET_LABELS[b.key]}</p>
               </div>
             </div>
           );
@@ -62,19 +69,19 @@ export function TaskDueBuckets({ tasks }: { tasks: Task[] }) {
             {overdue > 0 && (
               <div
                 className="transition-[width] duration-700 ease-out"
-                style={{ width: mounted ? `${(overdue / activeTotal) * 100}%` : "0%", background: DEADLINE_BUCKET_CONFIG.overdue.hex }}
+                style={{ width: mounted ? `${(overdue / activeTotal) * 100}%` : "0%", background: DEADLINE_COLORS.overdue }}
               />
             )}
             {dueToday > 0 && (
               <div
                 className="transition-[width] duration-700 ease-out delay-75"
-                style={{ width: mounted ? `${(dueToday / activeTotal) * 100}%` : "0%", background: DEADLINE_BUCKET_CONFIG.today.hex }}
+                style={{ width: mounted ? `${(dueToday / activeTotal) * 100}%` : "0%", background: DEADLINE_COLORS.today }}
               />
             )}
             {dueThisWeek > 0 && (
               <div
                 className="transition-[width] duration-700 ease-out delay-150"
-                style={{ width: mounted ? `${(dueThisWeek / activeTotal) * 100}%` : "0%", background: DEADLINE_BUCKET_CONFIG.week.hex }}
+                style={{ width: mounted ? `${(dueThisWeek / activeTotal) * 100}%` : "0%", background: DEADLINE_COLORS.week }}
               />
             )}
           </div>
