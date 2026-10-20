@@ -29,9 +29,9 @@ export function HealthGauge({ score }: { score: number }) {
   const label = isHealthy ? "Excellent" : isWarning ? "Moderate" : "At Risk";
 
   const gradId = "hg-grad";
-  const glowColor = isHealthy ? "rgba(52,211,153,0.15)" : isWarning ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)";
-  const arcColor = isHealthy ? "url(#hg-grad)" : isWarning ? "#fbbf24" : "#f87171";
-  const scoreColor = isHealthy ? "#34d399" : isWarning ? "#fbbf24" : "#f87171";
+  const glowColor = isHealthy ? "color-mix(in oklab, var(--success) 18%, transparent)" : isWarning ? "color-mix(in oklab, var(--warning) 18%, transparent)" : "color-mix(in oklab, var(--destructive) 18%, transparent)";
+  const arcColor = isHealthy ? "url(#hg-grad)" : isWarning ? "var(--warning)" : "var(--destructive)";
+  const scoreColor = isHealthy ? "var(--success)" : isWarning ? "var(--warning)" : "var(--destructive)";
 
   const ticks = Array.from({ length: 11 }, (_, i) => i * 10);
 
@@ -45,19 +45,19 @@ export function HealthGauge({ score }: { score: number }) {
       <svg width={size} height={size / 2 + 36} viewBox={`0 0 ${size} ${size / 2 + 36}`} overflow="visible">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#34d399" />
-            <stop offset="100%" stopColor="#6ee7b7" />
+            <stop offset="0%" stopColor="var(--success)" />
+            <stop offset="100%" stopColor="var(--chart-1)" />
           </linearGradient>
         </defs>
 
-        <path d={arcPath(Math.PI, 0)} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={strokeW} strokeLinecap="round" />
+        <path d={arcPath(Math.PI, 0)} fill="none" stroke="var(--border)" strokeWidth={strokeW} strokeLinecap="round" />
 
         {ticks.map((t) => {
           const angle = Math.PI - (t / 100) * Math.PI;
           const inner = { x: cx + (R - strokeW / 2 - 2) * Math.cos(angle), y: cy - (R - strokeW / 2 - 2) * Math.sin(angle) };
           const outer = { x: cx + (R + strokeW / 2 + 2) * Math.cos(angle), y: cy - (R + strokeW / 2 + 2) * Math.sin(angle) };
           return (
-            <line key={t} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="rgba(255,255,255,0.12)" strokeWidth={t % 50 === 0 ? 2 : 1} />
+            <line key={t} x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="var(--border)" strokeWidth={t % 50 === 0 ? 2 : 1} />
           );
         })}
 
@@ -77,7 +77,7 @@ export function HealthGauge({ score }: { score: number }) {
         <text x={cx} y={cy + 10} textAnchor="middle" fontSize="28" fontWeight="700" fontFamily="var(--font-mono, monospace)" fill={scoreColor}>
           {Math.round(animatedScore)}
         </text>
-        <text x={cx} y={cy + 25} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.45)" fontFamily="var(--font-sans, sans-serif)">
+        <text x={cx} y={cy + 25} textAnchor="middle" fontSize="10" fill="var(--muted-foreground)" fontFamily="var(--font-sans, sans-serif)">
           {label}
         </text>
       </svg>

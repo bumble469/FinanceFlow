@@ -1,6 +1,7 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
-import { formatCurrency, DEPT_PALETTE } from "../lib/overview-utils";
+import { formatCurrency } from "../lib/relative-time";
+import { seriesColor } from "../lib/chart-palette";
 
 interface DeptStat {
   name: string;
@@ -17,7 +18,7 @@ export function DepartmentBreakdown({ departmentStats, currency }: { departmentS
 
   const withBudget = departmentStats.filter((d) => d.budget > 0);
   const totalBudget = withBudget.reduce((s, d) => s + d.budget, 0);
-  const donutData = withBudget.map((d, i) => ({ ...d, hex: DEPT_PALETTE[i % DEPT_PALETTE.length] }));
+  const donutData = withBudget.map((d, i) => ({ ...d, hex: seriesColor(i) }));
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

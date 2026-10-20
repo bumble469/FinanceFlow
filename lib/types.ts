@@ -551,3 +551,10 @@ export const DEFAULT_CONNECTION_PREFS: ConnectionPrefs = {
   emailNotificationsEnabled: true,
   unreadBadgeEnabled: true,
 };
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+
+/** Generic payload stored per-tab in the analytics store. */
+export type TabDataPayload = Record<string, unknown>;
