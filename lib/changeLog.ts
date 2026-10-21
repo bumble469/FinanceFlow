@@ -10,6 +10,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    id: "2026-10-20-individual-plan-overview",
+    date: "2026-10-20",
+    title: "Individual Plan Overview — Categorization & Bifurcation",
+    tag: "New",
+    bullets: [
+      "Introduced an Individual Plan Overview section to provide a structured view of individual plans.",
+      "Categorized plans into relevant sections for better organization and easier navigation.",
+      "Bifurcated plan details into distinct categories to improve clarity and readability.",
+      "Improved the presentation of individual plan information for easier tracking and comparison.",
+    ],
+  },
+  {
     id: "2026-10-19-user-preferences",
     date: "2026-10-19",
     title: "User Preferences & Message Snackbar",

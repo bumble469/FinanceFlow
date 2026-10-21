@@ -429,6 +429,16 @@ model PasswordChangeCode {
   @@map("password_change_codes")
 }
 
+model EmailRateLimit {
+  id        String   @id @default(uuid())
+  ipAddress String
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress, createdAt])
+  @@map("email_rate_limits")
+}
+
+
 //////////////////////
 // ACCOUNT (WORKSPACE)
 //////////////////////

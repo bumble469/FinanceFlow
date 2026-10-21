@@ -5,7 +5,7 @@ import { Wrench } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useFinancialStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "../lib/overview-utils";
+import { formatCurrency } from "../lib/relative-time";
 
 export function HardwareImpactWidget({ planId }: { planId: string }) {
   const [items, setItems] = useState<any[]>([]);

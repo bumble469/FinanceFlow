@@ -1,7 +1,8 @@
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { TrendingUp } from "lucide-react";
 import type { Income, Expense } from "@/lib/types";
-import { formatCurrency } from "../lib/overview-utils";
+import { formatCurrency } from "../lib/relative-time";
+import { ChartTooltip } from "../lib/chart-tooltip";
 
 export function IncomeExpenseTrend({ income, expenses, currency }: { income: Income[]; expenses: Expense[]; currency: string }) {
   const monthKey = (d: string) => new Date(d).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
@@ -53,12 +54,12 @@ export function IncomeExpenseTrend({ income, expenses, currency }: { income: Inc
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
+          <span className="h-2 w-2 rounded-full bg-[var(--success)]" />
           <span className="text-muted-foreground">Income</span>
           <span className="font-semibold text-foreground">{formatCurrency(totalIncome, currency)}</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-[#ef4444]" />
+          <span className="h-2 w-2 rounded-full bg-[var(--destructive)]" />
           <span className="text-muted-foreground">Expense</span>
           <span className="font-semibold text-foreground">{formatCurrency(totalExpense, currency)}</span>
         </span>
@@ -74,23 +75,27 @@ export function IncomeExpenseTrend({ income, expenses, currency }: { income: Inc
         <AreaChart data={data}>
           <defs>
             <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--success)" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="var(--success)" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="var(--destructive)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" opacity={0.25} vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(v, currency)} width={70} axisLine={false} tickLine={false} />
           <Tooltip
-            formatter={(v: number) => formatCurrency(v, currency)}
-            contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+            content={
+              <ChartTooltip
+                currency={currency}
+                formatValue={(v) => formatCurrency(v, currency)}
+              />
+            }
           />
-          <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fill="url(#incomeGrad)" name="Income" />
-          <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fill="url(#expenseGrad)" name="Expense" />
+          <Area type="monotone" dataKey="income" stroke="var(--success)" strokeWidth={2} fill="url(#incomeGrad)" name="Income" />
+          <Area type="monotone" dataKey="expense" stroke="var(--destructive)" strokeWidth={2} fill="url(#expenseGrad)" name="Expense" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

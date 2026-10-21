@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Step = 'contact' | 'verify' | 'done';
 
@@ -132,14 +133,21 @@ export default function TwoFactorSetupPage() {
                             >
                                 Email
                             </Button>
-                            <Button
-                                type="button"
-                                className='cursor-pointer'
-                                variant={method === 'SMS' ? 'default' : 'outline'}
-                                onClick={() => { setMethod('SMS'); setContact(''); setError(''); }}
-                            >
-                                SMS
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-flex">
+                                        <Button
+                                            type="button"
+                                            className='w-full cursor-not-allowed'
+                                            variant="outline"
+                                            disabled
+                                        >
+                                            SMS
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Coming soon</TooltipContent>
+                            </Tooltip>
                         </div>
 
                         <div className="space-y-2 mb-6">

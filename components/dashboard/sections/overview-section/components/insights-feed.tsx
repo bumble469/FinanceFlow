@@ -1,10 +1,10 @@
-import type { Insight } from "./insights-engine";
+import type { Insight } from "@/lib/analytics/insights";
 
 const TONE_CONFIG = {
-  positive: { accent: "#34d399", bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.25)", icon: "✦", label: "Positive" },
-  warning: { accent: "#fbbf24", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.25)", icon: "⚠", label: "Warning" },
-  negative: { accent: "#f87171", bg: "rgba(248,113,113,0.06)", border: "rgba(248,113,113,0.25)", icon: "✕", label: "Risk" },
-  neutral: { accent: "#94a3b8", bg: "rgba(148,163,184,0.06)", border: "rgba(148,163,184,0.18)", icon: "→", label: "Info" },
+  positive: { accent: "var(--success)", bg: "color-mix(in oklab, var(--success) 8%, transparent)", border: "color-mix(in oklab, var(--success) 30%, transparent)", icon: "✦", label: "Positive" },
+  warning: { accent: "var(--warning)", bg: "color-mix(in oklab, var(--warning) 8%, transparent)", border: "color-mix(in oklab, var(--warning) 30%, transparent)", icon: "⚠", label: "Warning" },
+  negative: { accent: "var(--destructive)", bg: "color-mix(in oklab, var(--destructive) 8%, transparent)", border: "color-mix(in oklab, var(--destructive) 30%, transparent)", icon: "✕", label: "Risk" },
+  neutral: { accent: "var(--muted-foreground)", bg: "color-mix(in oklab, var(--muted-foreground) 8%, transparent)", border: "color-mix(in oklab, var(--muted-foreground) 22%, transparent)", icon: "→", label: "Info" },
 } as const;
 
 export function InsightsFeed({ insights }: { insights: Insight[] }) {
@@ -18,17 +18,17 @@ export function InsightsFeed({ insights }: { insights: Insight[] }) {
   }
   return (
     <div className="space-y-2">
-      {insights.map((ins, i) => {
+      {insights.map((ins) => {
         const cfg = TONE_CONFIG[ins.tone];
         return (
           <div
-            key={i}
+            key={ins.id}
             className="relative flex items-start gap-3 rounded-lg px-3 py-2.5 overflow-hidden"
             style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderLeft: `3px solid ${cfg.accent}` }}
           >
             <span
               className="flex-shrink-0 flex items-center justify-center rounded-md text-[11px] font-bold mt-0.5"
-              style={{ width: 22, height: 22, background: `${cfg.accent}22`, color: cfg.accent }}
+              style={{ width: 22, height: 22, background: `color-mix(in oklab, ${cfg.accent} 16%, transparent)`, color: cfg.accent }}
             >
               {cfg.icon}
             </span>

@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
       );
     }
     if (challenge.attempts >= MAX_ATTEMPTS) {
+      // Invalidate the code so it cannot be guessed again
+      await prisma.emailVerificationCode.update({
+        where: { id: challenge.id },
+        data: { usedAt: new Date() },
+      });
       return NextResponse.json(
         { error: 'Too many wrong attempts. Please request a new code.' },
         { status: 429 }
@@ -55,10 +60,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!(await verifyOtp(code, challenge.codeHash))) {
-      await prisma.emailVerificationCode.update({
+      const updated = await prisma.emailVerificationCode.update({
         where: { id: challenge.id },
         data: { attempts: { increment: 1 } },
       });
+      if (updated.attempts >= MAX_ATTEMPTS) {
+        // Invalidate the code so it cannot be guessed again
+        await prisma.emailVerificationCode.update({
+          where: { id: challenge.id },
+          data: { usedAt: new Date() },
+        });
+      }
       return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
     }
 

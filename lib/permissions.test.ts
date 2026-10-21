@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { getPermissions, type CoAdminPermissions, type ManagerPermissions, type CoManagerPermissions } from "./permissions";
+import {
+  getPermissions,
+  DEFAULT_CO_ADMIN_PERMISSIONS,
+  type CoAdminPermissions,
+  type ManagerPermissions,
+  type CoManagerPermissions,
+} from "./permissions";
 import type { CurrentPlanMeta } from "./store";
 
 function meta(overrides: Partial<CurrentPlanMeta>): CurrentPlanMeta {
@@ -18,8 +24,16 @@ describe("role baselines — canDeleteMilestone", () => {
   it("ADMIN can delete", () => {
     expect(getPermissions(meta({ role: "ADMIN" })).canDeleteMilestone).toBe(true);
   });
-  it("CO_ADMIN cannot delete, even with no explicit denial", () => {
-    expect(getPermissions(meta({ role: "CO_ADMIN" })).canDeleteMilestone).toBe(false);
+  it("CO_ADMIN can add regardless of department when granted tasks.create", () => {
+    const perms = getPermissions(meta({ role: "CO_ADMIN", permissions: DEFAULT_CO_ADMIN_PERMISSIONS }));
+    expect(perms.canAddTask("dept-1")).toBe(true);
+  });
+  it("CO_ADMIN without tasks.create cannot add", () => {
+    const denied: CoAdminPermissions = {
+      ...DEFAULT_CO_ADMIN_PERMISSIONS,
+      tasks: { create: false, edit: false, delete: false },
+    };
+    expect(getPermissions(meta({ role: "CO_ADMIN", permissions: denied })).canAddTask("dept-1")).toBe(false);
   });
   it("MANAGER cannot delete", () => {
     expect(getPermissions(meta({ role: "MANAGER" })).canDeleteMilestone).toBe(false);
@@ -32,9 +46,6 @@ describe("role baselines — canDeleteMilestone", () => {
 describe("canAddTask — department scoping", () => {
   it("OWNER/ADMIN can add regardless of department", () => {
     expect(getPermissions(meta({ role: "ADMIN" })).canAddTask("dept-1")).toBe(true);
-  });
-  it("CO_ADMIN can add regardless of department (no scoping in current model)", () => {
-    expect(getPermissions(meta({ role: "CO_ADMIN" })).canAddTask("dept-1")).toBe(true);
   });
   it("MANAGER can add only within their scoped departments", () => {
     const perms = getPermissions(meta({ role: "MANAGER", departmentIds: ["dept-1"] }));
@@ -51,9 +62,11 @@ describe("canAddTask — department scoping", () => {
 });
 
 describe("canDeleteTask — narrower than canAddTask", () => {
-  it("OWNER/ADMIN/CO_ADMIN can delete", () => {
+  it("OWNER/ADMIN can always delete; CO_ADMIN only with tasks.delete", () => {
+    expect(getPermissions(meta({ role: "OWNER" })).canDeleteTask).toBe(true);
     expect(getPermissions(meta({ role: "ADMIN" })).canDeleteTask).toBe(true);
-    expect(getPermissions(meta({ role: "CO_ADMIN" })).canDeleteTask).toBe(true);
+    expect(getPermissions(meta({ role: "CO_ADMIN", permissions: DEFAULT_CO_ADMIN_PERMISSIONS })).canDeleteTask).toBe(true);
+    expect(getPermissions(meta({ role: "CO_ADMIN", permissions: null })).canDeleteTask).toBe(false);
   });
   it("MANAGER cannot delete, even within their own department", () => {
     const perms = getPermissions(meta({ role: "MANAGER", departmentIds: ["dept-1"] }));
@@ -95,15 +108,8 @@ describe("canApproveHardwareRequest — deptId scoping + explicit grants", () =>
 
   it("CO_ADMIN needs the granular hardware.approve flag", () => {
     const withApprove: CoAdminPermissions = {
-      members: { edit: false, delete: false },
-      departments: { edit: false, delete: false },
-      phases: { edit: false, delete: false },
-      revenue: { create: false, edit: false, delete: false },
-      expenses: { create: false, edit: false, delete: false, approve: false },
-      reports: { create: false, edit: false, delete: false },
+      ...DEFAULT_CO_ADMIN_PERMISSIONS,
       hardware: { edit: false, delete: false, approve: true },
-      extensions: { approve: false },
-      canManagePermissions: false,
     };
     expect(getPermissions(meta({ role: "CO_ADMIN", permissions: withApprove })).canApproveHardwareRequest(null)).toBe(true);
     expect(getPermissions(meta({ role: "CO_ADMIN", permissions: { ...withApprove, hardware: { ...withApprove.hardware, approve: false } } })).canApproveHardwareRequest(null)).toBe(false);
