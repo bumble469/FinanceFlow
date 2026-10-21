@@ -33,6 +33,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 400 });
     }
     if (challenge.attempts >= MAX_ATTEMPTS) {
+      // Invalidate the code so it cannot be guessed again
+      await prisma.passwordChangeCode.update({
+        where: { id: challenge.id },
+        data: { usedAt: new Date() },
+      });
       return NextResponse.json(
         { error: "Too many incorrect attempts. Request a new code." },
         { status: 429 }
@@ -40,10 +45,17 @@ export async function PATCH(req: NextRequest) {
     }
     const cleaned = String(code ?? "").replace(/\s/g, "");
     if (!/^\d{6}$/.test(cleaned) || !(await verifyOtp(cleaned, challenge.codeHash))) {
-      await prisma.passwordChangeCode.update({
+      const updated = await prisma.passwordChangeCode.update({
         where: { id: challenge.id },
         data: { attempts: { increment: 1 } },
       });
+      if (updated.attempts >= MAX_ATTEMPTS) {
+        // Invalidate the code so it cannot be guessed again
+        await prisma.passwordChangeCode.update({
+          where: { id: challenge.id },
+          data: { usedAt: new Date() },
+        });
+      }
       return NextResponse.json({ error: "Incorrect code" }, { status: 400 });
     }
 

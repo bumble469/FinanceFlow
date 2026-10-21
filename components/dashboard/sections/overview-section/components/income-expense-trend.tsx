@@ -2,6 +2,7 @@ import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tool
 import { TrendingUp } from "lucide-react";
 import type { Income, Expense } from "@/lib/types";
 import { formatCurrency } from "../lib/relative-time";
+import { ChartTooltip } from "../lib/chart-tooltip";
 
 export function IncomeExpenseTrend({ income, expenses, currency }: { income: Income[]; expenses: Expense[]; currency: string }) {
   const monthKey = (d: string) => new Date(d).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
@@ -86,8 +87,12 @@ export function IncomeExpenseTrend({ income, expenses, currency }: { income: Inc
           <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(v, currency)} width={70} axisLine={false} tickLine={false} />
           <Tooltip
-            formatter={(v: number) => formatCurrency(v, currency)}
-            contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+            content={
+              <ChartTooltip
+                currency={currency}
+                formatValue={(v) => formatCurrency(v, currency)}
+              />
+            }
           />
           <Area type="monotone" dataKey="income" stroke="var(--success)" strokeWidth={2} fill="url(#incomeGrad)" name="Income" />
           <Area type="monotone" dataKey="expense" stroke="var(--destructive)" strokeWidth={2} fill="url(#expenseGrad)" name="Expense" />

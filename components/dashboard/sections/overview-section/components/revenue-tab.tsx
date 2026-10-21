@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { formatCurrency } from "../lib/relative-time";
 import { CardPrimitive } from "../lib/card-primitive";
 import { IncomeExpenseTrend } from "./income-expense-trend";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { EmptyState } from "../lib/empty-state";
 import {
   Select,
   SelectTrigger,
@@ -19,7 +21,8 @@ import {
   Tooltip,
 } from "recharts";
 import { CustomPieTooltip } from "./custom-pie-tooltip";
-import { Receipt, Store } from "lucide-react";
+import { ChartPieTooltip } from "../lib/chart-tooltip";
+import { Receipt, Store, TrendingUp, Wallet, PiggyBank, PieChart as PieIcon } from "lucide-react";
 import type { FinanceTotals } from "@/lib/analytics/finance";
 import type { Income, Expense } from "@/lib/types";
 import { seriesColor } from "../lib/chart-palette";
@@ -96,6 +99,54 @@ export function RevenueTab({ data }: { data: Record<string, unknown> }) {
 
   return (
     <div className="space-y-4">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Income"
+          value={formatCurrency(totals?.totalIncomeReceived ?? 0, currency)}
+          subtitle={
+            (totals?.totalIncomeExpected ?? 0) > (totals?.totalIncomeReceived ?? 0)
+              ? `expected ${formatCurrency(totals?.totalIncomeExpected ?? 0, currency)}`
+              : "fully received"
+          }
+          status="healthy"
+          trend="up"
+          icon={<TrendingUp className="h-4 w-4" />}
+          variant="emerald"
+        />
+        <MetricCard
+          title="Expenses Paid"
+          value={formatCurrency(totals?.totalExpensesPaid ?? 0, currency)}
+          subtitle={`${formatCurrency(totals?.totalExpensesCommitted ?? 0, currency)} committed`}
+          status="healthy"
+          icon={<Receipt className="h-4 w-4" />}
+          variant="amber"
+        />
+        <MetricCard
+          title="Est. Profit / Loss"
+          value={formatCurrency(totals?.estimatedProfitLoss ?? 0, currency)}
+          subtitle={totals && totals.estimatedProfitLoss >= 0 ? "in the black" : "running a deficit"}
+          status={totals && totals.estimatedProfitLoss >= 0 ? "healthy" : "warning"}
+          trend={totals && totals.estimatedProfitLoss >= 0 ? "up" : "down"}
+          icon={<Wallet className="h-4 w-4" />}
+          variant="cyan"
+        />
+        <MetricCard
+          title="Total Budget"
+          value={formatCurrency(totals?.totalBudget ?? 0, currency)}
+          subtitle={
+            totals?.hasBudget
+              ? `${Math.round(totals?.budgetUsedPct ?? 0)}% consumed`
+              : "no budget set"
+          }
+          status="healthy"
+          progressPercent={totals?.budgetUsedPct ?? 0}
+          progressLabel="consumed"
+          icon={<PiggyBank className="h-4 w-4" />}
+          variant="violet"
+        />
+      </div>
+
       {/* Income vs Expense Trend Area Chart */}
       <CardPrimitive
         title="Income vs. Expense Trend"
@@ -116,7 +167,11 @@ export function RevenueTab({ data }: { data: Record<string, unknown> }) {
           }
         >
           {revenueSourceDonutData.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">No revenue streams recorded yet</p>
+            <EmptyState
+              icon={<PieIcon className="size-5" />}
+              title="No revenue streams yet"
+              description="Income sources recorded on this plan will be broken down here."
+            />
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-around gap-4 pt-2">
               <div className="relative">
@@ -135,7 +190,7 @@ export function RevenueTab({ data }: { data: Record<string, unknown> }) {
                         <Cell key={`cell-${index}`} fill={entry.hex} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                    <Tooltip content={<ChartPieTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -163,7 +218,11 @@ export function RevenueTab({ data }: { data: Record<string, unknown> }) {
           subtitle={`Total expenses: ${formatCurrency(totalExpenseAmount, currency)}`}
         >
           {categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">No expense entries recorded yet</p>
+            <EmptyState
+              icon={<Receipt className="size-5" />}
+              title="No expense entries yet"
+              description="Expenses logged against this plan will be totalled by category here."
+            />
           ) : (
             <div className="space-y-3 pt-1">
               {Object.entries(expensesByCategory).map(([cat, item], idx) => {

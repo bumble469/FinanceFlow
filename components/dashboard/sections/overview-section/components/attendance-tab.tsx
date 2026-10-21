@@ -3,10 +3,18 @@
 import { useState, useMemo } from "react";
 import { formatCurrency } from "../lib/relative-time";
 import { CardPrimitive } from "../lib/card-primitive";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { ChartTooltip } from "../lib/chart-tooltip";
+import { EmptyState } from "../lib/empty-state";
+import { StatusPill } from "../lib/status-pill";
 import {
   Ticket,
   CheckCircle2,
   Clock,
+  Banknote,
+  UserCheck,
+  UserX,
+  CalendarX,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -92,39 +100,66 @@ export function AttendanceTab({ data }: { data: Record<string, unknown> }) {
     return attendees;
   }, [attendees, statusFilter]);
 
+  const hasAttendanceData =
+    (ticketSales?.totalSold ?? 0) > 0 ||
+    (checkIn?.totalAttendees ?? 0) > 0 ||
+    bookingSeries.length > 0 ||
+    attendees.length > 0;
+
+  if (!hasAttendanceData) {
+    return (
+      <CardPrimitive title="Attendance & Box Office">
+        <EmptyState
+          icon={<CalendarX className="size-5" />}
+          title="No attendance data yet"
+          description="Ticket sales, check-ins, and box office revenue will appear here once the event goes live."
+        />
+      </CardPrimitive>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Tickets Sold</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{ticketSales?.totalSold ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {ticketSales?.totalCapacity ? `of ${ticketSales.totalCapacity} capacity` : "unlimited capacity"}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Box Office Revenue</p>
-          <p className="text-2xl font-bold text-foreground mt-1">
-            {formatCurrency(ticketSales?.totalRevenue ?? 0, currency)}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Ticket sales revenue</p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Check-in Rate</p>
-          <p className="text-2xl font-bold text-success mt-1">{checkIn?.checkInRate ?? 0}%</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {checkIn?.checkedIn ?? 0} checked in
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Pending Check-ins</p>
-          <p className="text-2xl font-bold text-warning mt-1">{checkIn?.notCheckedIn ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Expected arrivals</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Tickets Sold"
+          value={(ticketSales?.totalSold ?? 0).toString()}
+          subtitle={
+            ticketSales?.totalCapacity
+              ? `of ${ticketSales.totalCapacity} capacity`
+              : "unlimited capacity"
+          }
+          status="healthy"
+          icon={<Ticket className="h-4 w-4" />}
+          variant="violet"
+        />
+        <MetricCard
+          title="Box Office Revenue"
+          value={formatCurrency(ticketSales?.totalRevenue ?? 0, currency)}
+          subtitle="ticket sales revenue"
+          status="healthy"
+          icon={<Banknote className="h-4 w-4" />}
+          variant="emerald"
+        />
+        <MetricCard
+          title="Check-in Rate"
+          value={`${checkIn?.checkInRate ?? 0}%`}
+          subtitle={`${checkIn?.checkedIn ?? 0} checked in`}
+          status={checkIn && checkIn.checkInRate >= 50 ? "healthy" : "warning"}
+          progressPercent={checkIn?.checkInRate ?? 0}
+          progressLabel="arrived"
+          icon={<UserCheck className="h-4 w-4" />}
+          variant="cyan"
+        />
+        <MetricCard
+          title="Pending Check-ins"
+          value={(checkIn?.notCheckedIn ?? 0).toString()}
+          subtitle="expected arrivals"
+          status={checkIn && checkIn.notCheckedIn > 0 ? "warning" : "healthy"}
+          icon={<UserX className="h-4 w-4" />}
+          variant="amber"
+        />
       </div>
 
       {/* Ticket Tier Breakdown */}
@@ -147,10 +182,15 @@ export function AttendanceTab({ data }: { data: Record<string, unknown> }) {
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-muted-foreground">
+                  <div className="flex justify-between items-center gap-2 text-muted-foreground">
                     <span>Sold: {row.sold} {row.capacity ? `/ ${row.capacity}` : ""}</span>
                     {row.hasCapacityLimit && (
-                      <span className="font-medium text-foreground">{row.sellThroughPct}%</span>
+                      <StatusPill
+                        tone={row.sellThroughPct >= 90 ? "success" : row.sellThroughPct >= 50 ? "primary" : "warning"}
+                        uppercase={false}
+                      >
+                        {row.sellThroughPct}% sold
+                      </StatusPill>
                     )}
                   </div>
                   {row.hasCapacityLimit && (
@@ -193,13 +233,13 @@ export function AttendanceTab({ data }: { data: Record<string, unknown> }) {
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(v: number) => [formatCurrency(v, currency), "Revenue"]}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+                  content={
+                    <ChartTooltip
+                      currency={currency}
+                      formatValue={(v) => formatCurrency(v, currency)}
+                      seriesName={() => "Revenue"}
+                    />
+                  }
                 />
                 <Area
                   type="monotone"
@@ -259,15 +299,15 @@ export function AttendanceTab({ data }: { data: Record<string, unknown> }) {
 
                 <div className="flex items-center gap-2 shrink-0">
                   {att.checkedIn ? (
-                    <span className="flex items-center gap-1 text-success font-medium">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    <StatusPill tone="success" uppercase={false}>
+                      <CheckCircle2 className="h-3 w-3" />
                       Checked In
-                    </span>
+                    </StatusPill>
                   ) : (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
+                    <StatusPill tone="neutral" uppercase={false}>
+                      <Clock className="h-3 w-3" />
                       Awaiting
-                    </span>
+                    </StatusPill>
                   )}
                 </div>
               </div>

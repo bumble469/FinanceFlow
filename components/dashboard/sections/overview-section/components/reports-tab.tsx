@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { CardPrimitive } from "../lib/card-primitive";
-import { FileText, Download, Printer, Eye } from "lucide-react";
+import { EmptyState } from "../lib/empty-state";
+import { StatusPill, type PillTone } from "../lib/status-pill";
+import { FileText, Download, Printer, Eye, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toCsv, downloadFile } from "@/lib/csv";
 import {
@@ -58,6 +60,13 @@ const AVAILABLE_REPORTS: ReportConfig[] = [
     category: "operations",
   },
 ];
+
+/** Tonal treatment for each report category badge. */
+const CATEGORY_TONES: Record<ReportConfig["category"], PillTone> = {
+  finance: "success",
+  tasks: "primary",
+  operations: "warning",
+};
 
 /** A report's table shape as returned by /api/plan/[id]/analytics/reports */
 interface ReportTable {
@@ -164,9 +173,11 @@ ${summaryHtml ? `<table><tbody>${summaryHtml}</tbody></table>` : ""}
         subtitle="Generate formatted statements, audits, and compliance records"
       >
         {availableReports.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No report data available for this plan yet.
-          </p>
+          <EmptyState
+            icon={<FileBarChart className="size-5" />}
+            title="No report data available"
+            description="Statements, audits, and compliance records will appear here once this plan has activity to report on."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {availableReports.map((report) => {
@@ -185,9 +196,9 @@ ${summaryHtml ? `<table><tbody>${summaryHtml}</tbody></table>` : ""}
                         </span>
                         <h4 className="font-semibold text-foreground text-sm truncate">{report.title}</h4>
                       </div>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
+                      <StatusPill tone={CATEGORY_TONES[report.category]} className="shrink-0">
                         {report.category}
-                      </span>
+                      </StatusPill>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed pl-10">
                       {report.description}

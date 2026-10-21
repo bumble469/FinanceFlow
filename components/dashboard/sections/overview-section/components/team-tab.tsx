@@ -3,6 +3,10 @@
 import { useState, useMemo } from "react";
 import { formatCurrency } from "../lib/relative-time";
 import { CardPrimitive } from "../lib/card-primitive";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { EmptyState } from "../lib/empty-state";
+import { StatusPill, PillTone } from "../lib/status-pill";
+import { ChartTooltip } from "../lib/chart-tooltip";
 import {
   Select,
   SelectTrigger,
@@ -19,6 +23,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
+import { Users, UserPlus, Wallet, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TeamMemberItem {
@@ -78,8 +83,65 @@ export function TeamTab({ data }: { data: Record<string, unknown> }) {
     return members.reduce((s, m) => s + m.monthlyCost, 0);
   }, [members]);
 
+  const totalBlockedTasks = useMemo(() => {
+    return members.reduce((s, m) => s + m.blockedTasks, 0);
+  }, [members]);
+
+  const totalDoneTasks = useMemo(() => {
+    return members.reduce((s, m) => s + m.doneTasks, 0);
+  }, [members]);
+
+  const completionPct =
+    totalAssignedTasks > 0 ? Math.round((totalDoneTasks / totalAssignedTasks) * 100) : 0;
+
+  const roleCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of members) {
+      if (m.role) counts.set(m.role, (counts.get(m.role) ?? 0) + 1);
+    }
+    return Array.from(counts.entries());
+  }, [members]);
+
   return (
     <div className="space-y-4">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Team Members"
+          value={String(d.totalMembers ?? members.length)}
+          subtitle={`${roleCounts.length} role${roleCounts.length === 1 ? "" : "s"} on the plan`}
+          status="healthy"
+          icon={<Users className="h-4 w-4" />}
+          variant="violet"
+        />
+        <MetricCard
+          title="Tasks Assigned"
+          value={totalAssignedTasks.toString()}
+          subtitle={`${totalDoneTasks} completed`}
+          status="healthy"
+          progressPercent={completionPct}
+          progressLabel="complete"
+          icon={<CalendarCheck className="h-4 w-4" />}
+          variant="emerald"
+        />
+        <MetricCard
+          title="Blocked Tasks"
+          value={totalBlockedTasks.toString()}
+          subtitle={totalBlockedTasks > 0 ? "needs attention" : "nothing blocked"}
+          status={totalBlockedTasks > 0 ? "warning" : "healthy"}
+          icon={<UserPlus className="h-4 w-4" />}
+          variant="amber"
+        />
+        <MetricCard
+          title="Monthly Payroll"
+          value={formatCurrency(totalMonthlyPayroll, currency)}
+          subtitle="recurring team cost"
+          status="healthy"
+          icon={<Wallet className="h-4 w-4" />}
+          variant="cyan"
+        />
+      </div>
+
       {/* Top Filter and Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -123,13 +185,12 @@ export function TeamTab({ data }: { data: Record<string, unknown> }) {
                 <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(v: number) => [`${v} tasks`, "Workload"]}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+                  content={
+                    <ChartTooltip
+                      formatValue={(v) => `${v} tasks`}
+                      seriesName={() => "Workload"}
+                    />
+                  }
                 />
                 <Bar dataKey="taskCount" fill="var(--chart-1)" radius={[0, 4, 4, 0]} name="Tasks" />
               </BarChart>
@@ -144,7 +205,11 @@ export function TeamTab({ data }: { data: Record<string, unknown> }) {
         subtitle={`${filteredMembers.length} members shown`}
       >
         {filteredMembers.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-10">No members match the selected role.</p>
+          <EmptyState
+            icon={<UserPlus className="size-5" />}
+            title="No members match the selected role"
+            description="Try changing the role filter to find them."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredMembers.map((m) => (
@@ -159,9 +224,9 @@ export function TeamTab({ data }: { data: Record<string, unknown> }) {
                       <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-primary/10 text-primary shrink-0">
+                  <StatusPill tone="primary" className="shrink-0">
                     {m.role.replace("_", " ")}
-                  </span>
+                  </StatusPill>
                 </div>
 
                 {m.departments.length > 0 && (

@@ -2,6 +2,9 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "../lib/relative-time";
 import { seriesColor } from "../lib/chart-palette";
+import { ChartTooltip } from "../lib/chart-tooltip";
+import { EmptyState } from "../lib/empty-state";
+import { PieChart as PieIcon } from "lucide-react";
 
 interface DeptStat {
   name: string;
@@ -13,7 +16,13 @@ interface DeptStat {
 
 export function DepartmentBreakdown({ departmentStats, currency }: { departmentStats: DeptStat[]; currency: string }) {
   if (departmentStats.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-10">No departments yet</p>;
+    return (
+      <EmptyState
+        icon={<PieIcon className="size-5" />}
+        title="No departments yet"
+        description="Department budgets will be broken down here once departments are added."
+      />
+    );
   }
 
   const withBudget = departmentStats.filter((d) => d.budget > 0);
@@ -24,7 +33,11 @@ export function DepartmentBreakdown({ departmentStats, currency }: { departmentS
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <div className="lg:col-span-2 flex flex-col items-center justify-center">
         {donutData.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-10">No department budgets allocated yet</p>
+          <EmptyState
+            icon={<PieIcon className="size-5" />}
+            title="No department budgets allocated yet"
+            description="Assign a budget to a department to see the allocation split."
+          />
         ) : (
           <div className="relative">
             <ResponsiveContainer width={200} height={200}>
@@ -33,8 +46,12 @@ export function DepartmentBreakdown({ departmentStats, currency }: { departmentS
                   {donutData.map((d, i) => <Cell key={i} fill={d.hex} />)}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number, n: string) => [formatCurrency(v, currency), n]}
-                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  content={
+                    <ChartTooltip
+                      currency={currency}
+                      formatValue={(v) => formatCurrency(v, currency)}
+                    />
+                  }
                 />
               </PieChart>
             </ResponsiveContainer>

@@ -20,12 +20,23 @@ export async function POST(request: NextRequest) {
         });
 
         if (!challenge || new Date() > challenge.expiresAt) {
-            return NextResponse.json({ error: 'No valid verification code. Request a new one.' }, { status: 400 });
+            return NextResponse.json({ error: 'No valid verification code. Request a new one.' }, { status: 400 })
         }
 
-        const isValid = await verifyOtp(code, challenge.codeHash);
+        const isValid = await verifyOtp(code, challenge.codeHash)
         if (!isValid) {
-            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+            await prisma.twoFactorChallenge.update({
+                where: { id: challenge.id },
+                data: { attempts: { increment: 1 } },
+            })
+            const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
+            if (updated && updated.attempts >= 5) {
+                await prisma.twoFactorChallenge.update({
+                    where: { id: challenge.id },
+                    data: { expiresAt: new Date() }, // invalidate immediately
+                })
+            }
+            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
         }
 
         const backupCodes = generateBackupCodes(10);

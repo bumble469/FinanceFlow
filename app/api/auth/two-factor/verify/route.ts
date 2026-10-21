@@ -48,19 +48,31 @@ export async function POST(request: NextRequest) {
             const challenge = await prisma.twoFactorChallenge.findFirst({
                 where: { userId, usedAt: null },
                 orderBy: { createdAt: 'desc' },
-            });
-            if (
-                challenge &&
-                new Date() <= challenge.expiresAt &&
-                (await verifyOtp(code, challenge.codeHash))
-            ) {
-                await prisma.twoFactorChallenge.update({
-                    where: { id: challenge.id },
-                    data: { usedAt: new Date() },
-                });
-                verified = true;
+            })
+            if (challenge && new Date() <= challenge.expiresAt) {
+                const valid = await verifyOtp(code, challenge.codeHash)
+                if (valid) {
+                    await prisma.twoFactorChallenge.update({
+                        where: { id: challenge.id },
+                        data: { usedAt: new Date() },
+                    })
+                    verified = true
+                } else {
+                    await prisma.twoFactorChallenge.update({
+                        where: { id: challenge.id },
+                        data: { attempts: { increment: 1 } },
+                    })
+                    const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
+                    if (updated && updated.attempts >= 5) {
+                        await prisma.twoFactorChallenge.update({
+                            where: { id: challenge.id },
+                            data: { expiresAt: new Date() },
+                        })
+                    }
+                }
             }
-        } else if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
+        }
+        else if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
             const backups = await prisma.twoFactorBackupCode.findMany({
                 where: { userId, usedAt: null },
             });
