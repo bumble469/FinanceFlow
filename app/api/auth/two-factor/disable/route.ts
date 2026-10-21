@@ -5,26 +5,45 @@ import { verifyPassword } from '@/lib/password';
 import { verifyOtp, generateOtpCode, hashOtp } from '@/lib/otp';
 import { sendEmail } from '@/lib/email';
 import { getOtpDestination } from '@/lib/two-factor';
+import { getClientIp } from '@/lib/utils';
+import { checkIpRateLimit } from '@/lib/rate-limit';
 
-const MAX_SENDS = 4; // first code + 3 resends
-const WINDOW_MS = 15 * 60 * 1000;
+const COOLDOWN_MS = 60 * 1000;
+const MAX_SENDS_PER_HOUR = 5;
+const MAX_CODE_ATTEMPTS = 5;
+const WINDOW_MS = 60 * 60 * 1000;
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 async function checkCode(userId: string, raw: string): Promise<boolean> {
-    const code = raw.replace(/[\s-]/g, '').toUpperCase();
+    const code = raw.replace(/[\s-]/g, '').toUpperCase()
 
     if (/^\d{6}$/.test(code)) {
         const challenge = await prisma.twoFactorChallenge.findFirst({
             where: { userId, usedAt: null },
             orderBy: { createdAt: 'desc' },
-        });
-        if (challenge && new Date() <= challenge.expiresAt && (await verifyOtp(code, challenge.codeHash))) {
+        })
+        if (challenge && new Date() <= challenge.expiresAt) {
+            const valid = await verifyOtp(code, challenge.codeHash)
+            if (valid) {
+                await prisma.twoFactorChallenge.update({
+                    where: { id: challenge.id },
+                    data: { usedAt: new Date() },
+                })
+                return true
+            }
             await prisma.twoFactorChallenge.update({
                 where: { id: challenge.id },
-                data: { usedAt: new Date() },
-            });
-            return true;
+                data: { attempts: { increment: 1 } },
+            })
+            const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
+            if (updated && updated.attempts >= 5) {
+                await prisma.twoFactorChallenge.update({
+                    where: { id: challenge.id },
+                    data: { expiresAt: new Date() },
+                })
+            }
         }
-        return false;
+        return false
     }
 
     if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
@@ -47,6 +66,18 @@ export async function POST(request: NextRequest) {
         const auth = await getAuthUser();
         if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+        // IP limit first, for both sending codes and confirming (throttles password/code guessing)
+        const ip = getClientIp(request);
+        if (ip) {
+            const ipLimit = await checkIpRateLimit(ip);
+            if (!ipLimit.allowed) {
+                return NextResponse.json(
+                    { error: 'Too many requests from this IP. Please try again later.', remaining: 0 },
+                    { status: 429 }
+                );
+            }
+        }
+
         const body = (await request.json().catch(() => null)) as {
             password?: string;
             code?: string;
@@ -64,45 +95,36 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Two-step verification is not enabled' }, { status: 400 });
         }
 
-        // Step A (Google-only accounts): email a confirmation code
         if (body?.sendCode) {
+            const destination = getOtpDestination(settings);
+            if (destination.type !== 'email' && process.env.NODE_ENV === 'production') {
+                return NextResponse.json({ error: 'SMS verification is not available yet' }, { status: 501 });
+            }
+
+            // Failed sends are also recorded as challenges, so they count toward the limit
             const recent = await prisma.twoFactorChallenge.findMany({
                 where: { userId: user.id, createdAt: { gte: new Date(Date.now() - WINDOW_MS) } },
                 orderBy: { createdAt: 'desc' },
                 select: { createdAt: true },
             });
-            if (recent.length >= MAX_SENDS) {
+            if (recent.length >= MAX_SENDS_PER_HOUR) {
                 return NextResponse.json(
-                    { error: 'Too many codes requested. Please try again in 15 minutes.', remaining: 0 },
+                    { error: 'Too many codes requested. Please try again later.', remaining: 0 },
                     { status: 429 }
                 );
             }
-            if (recent[0] && Date.now() - recent[0].createdAt.getTime() < 30 * 1000) {
+            if (recent[0] && Date.now() - recent[0].createdAt.getTime() < COOLDOWN_MS) {
                 return NextResponse.json(
-                    { error: 'Please wait a few seconds before requesting another code.', remaining: MAX_SENDS - recent.length },
+                    { error: 'Please wait before requesting another code.', remaining: MAX_SENDS_PER_HOUR - recent.length },
                     { status: 429 }
                 );
             }
 
             const code = generateOtpCode(6);
             const codeHash = await hashOtp(code);
-            const destination = getOtpDestination(settings);
 
-            if (destination.type === 'email') {
-                const sent = await sendEmail({
-                    to: settings.recoveryEmail || user.email,
-                    toName: user.name,
-                    subject: 'Confirm turning off two-step verification',
-                    htmlContent: `<p>Your code to turn off two-step verification is <strong>${code}</strong>. It expires in 10 minutes. If this wasn't you, ignore this email.</p>`,
-                });
-                if (!sent) {
-                    return NextResponse.json({ error: 'Could not send the email. Please try again shortly.' }, { status: 502 });
-                }
-            } else {
-                console.log('[2FA disable] SMS code to', destination.value, ':', code);
-            }
-
-            await prisma.$transaction([
+            // Record the request BEFORE sending so failures still count
+            const [, challenge] = await prisma.$transaction([
                 prisma.twoFactorChallenge.updateMany({
                     where: { userId: user.id, usedAt: null },
                     data: { usedAt: new Date() },
@@ -112,12 +134,42 @@ export async function POST(request: NextRequest) {
                         userId: user.id,
                         method: settings.method,
                         codeHash,
-                        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+                        expiresAt: new Date(Date.now() + OTP_TTL_MS),
                     },
+                    select: { id: true },
                 }),
             ]);
 
-            return NextResponse.json({ success: true, destination, remaining: MAX_SENDS - recent.length - 1 });
+            let sent = false;
+            if (destination.type === 'email') {
+                sent = await sendEmail({
+                    to: settings.recoveryEmail || user.email,
+                    toName: user.name,
+                    subject: 'Confirm turning off two-step verification',
+                    htmlContent: `<p>Your code to turn off two-step verification is <strong>${code}</strong>. It expires in 10 minutes. If this wasn't you, ignore this email.</p>`,
+                });
+            } else {
+                // SMS only reaches here outside production
+                console.log('[2FA dev] SMS code to', destination.value, ':', code);
+                sent = true;
+            }
+
+            if (!sent) {
+                await prisma.twoFactorChallenge.update({
+                    where: { id: challenge.id },
+                    data: { usedAt: new Date() },
+                });
+                return NextResponse.json(
+                    { error: 'Could not send the email. Please try again shortly.' },
+                    { status: 502 }
+                );
+            }
+
+            return NextResponse.json({
+                success: true,
+                destination,
+                remaining: MAX_SENDS_PER_HOUR - recent.length - 1,
+            });
         }
 
         // Step B: confirm and disable
@@ -134,7 +186,11 @@ export async function POST(request: NextRequest) {
         await prisma.$transaction([
             prisma.twoFactorSettings.update({ where: { userId: user.id }, data: { enabled: false } }),
             prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
-            prisma.twoFactorChallenge.deleteMany({ where: { userId: user.id } }),
+            // Don't delete challenges: those rows are the rate-limit history. Just invalidate them.
+            prisma.twoFactorChallenge.updateMany({
+                where: { userId: user.id, usedAt: null },
+                data: { usedAt: new Date() },
+            }),
         ]);
 
         return NextResponse.json({ success: true });

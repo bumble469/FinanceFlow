@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Flag } from "lucide-react";
+import { Flag, ListChecks, CheckCircle2, CircleDashed, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CardPrimitive } from "../lib/card-primitive";
 import { TaskDueBuckets } from "./task-due-buckets";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { EmptyState } from "../lib/empty-state";
 import {
   Select,
   SelectTrigger,
@@ -99,8 +101,73 @@ export function PlanningTab({ data }: { data: Record<string, unknown> }) {
 
   const totalFilteredTasks = filteredTasks.length;
 
+  // Rollup counts for the KPI row. The server sends these for the unfiltered
+  // set, so they are only accurate while no department filter is applied.
+  const openTasks = d.openTasks ?? 0;
+  const blockedTasks = d.blockedTasks ?? 0;
+  const completionPct = d.completionPct ?? 0;
+  const isUnfiltered = departmentFilter === "all";
+
+  const doneCount = useMemo(
+    () => filteredTasks.filter((t) => t.status === "DONE" || t.status === "COMPLETED").length,
+    [filteredTasks]
+  );
+
+  // The server's open/blocked rollups cover the whole plan, so recompute them
+  // client-side whenever a department filter narrows the view.
+  const filteredOpenCount = useMemo(
+    () => filteredTasks.filter((t) => t.status !== "DONE" && t.status !== "COMPLETED").length,
+    [filteredTasks]
+  );
+
+  const filteredBlockedCount = useMemo(
+    () => filteredTasks.filter((t) => t.status === "BLOCKED").length,
+    [filteredTasks]
+  );
+
+  const openTaskCount = isUnfiltered ? openTasks : filteredOpenCount;
+  const blockedTaskCount = isUnfiltered ? blockedTasks : filteredBlockedCount;
+
   return (
     <div className="space-y-4">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Tasks"
+          value={totalFilteredTasks.toString()}
+          subtitle={isUnfiltered ? `${d.totalTasks ?? totalFilteredTasks} in plan` : "filtered view"}
+          status="healthy"
+          icon={<ListChecks className="h-4 w-4" />}
+          variant="violet"
+        />
+        <MetricCard
+          title="Completion Rate"
+          value={`${isUnfiltered ? completionPct : totalFilteredTasks > 0 ? Math.round((doneCount / totalFilteredTasks) * 100) : 0}%`}
+          subtitle={`${doneCount} tasks done`}
+          status="healthy"
+          progressPercent={isUnfiltered ? completionPct : totalFilteredTasks > 0 ? Math.round((doneCount / totalFilteredTasks) * 100) : 0}
+          progressLabel="complete"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          variant="emerald"
+        />
+        <MetricCard
+          title="Open Tasks"
+          value={openTaskCount.toString()}
+          subtitle={isUnfiltered ? "awaiting action" : "in this department"}
+          status="healthy"
+          icon={<CircleDashed className="h-4 w-4" />}
+          variant="cyan"
+        />
+        <MetricCard
+          title="Blocked Tasks"
+          value={blockedTaskCount.toString()}
+          subtitle={blockedTaskCount > 0 ? "needs attention" : "nothing blocked"}
+          status={blockedTaskCount > 0 ? "warning" : "healthy"}
+          icon={<Ban className="h-4 w-4" />}
+          variant="amber"
+        />
+      </div>
+
       {/* Top Filter Bar */}
       {departments.length > 0 && (
         <div className="flex items-center justify-between">
@@ -131,7 +198,11 @@ export function PlanningTab({ data }: { data: Record<string, unknown> }) {
           subtitle={`${totalFilteredTasks} tasks total`}
         >
           {totalFilteredTasks === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">No tasks found</p>
+            <EmptyState
+              icon={<ListChecks className="size-5" />}
+              title="No tasks found"
+              description="Nothing matches this department filter yet."
+            />
           ) : (
             <div>
               <div className="relative">
@@ -153,8 +224,9 @@ export function PlanningTab({ data }: { data: Record<string, unknown> }) {
                     <Tooltip content={<CustomPieTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <p className="text-2xl font-bold text-foreground">{totalFilteredTasks}</p>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-lg font-bold text-foreground font-mono tabular-nums">{totalFilteredTasks}</p>
+                  <p className="text-[10px] text-muted-foreground">tasks</p>
                 </div>
               </div>
 
@@ -176,7 +248,11 @@ export function PlanningTab({ data }: { data: Record<string, unknown> }) {
             subtitle={`${filteredMilestones.length} milestones tracked`}
           >
             {filteredMilestones.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">No milestones yet</p>
+              <EmptyState
+                icon={<Flag className="size-5" />}
+                title="No milestones yet"
+                description="Milestones added to this plan will show their task progress here."
+              />
             ) : (
               <div className="space-y-3">
                 {filteredMilestones.slice(0, 6).map((m) => (

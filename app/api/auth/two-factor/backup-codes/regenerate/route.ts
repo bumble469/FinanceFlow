@@ -5,6 +5,8 @@ import { verifyPassword } from '@/lib/password';
 import { verifyOtp } from '@/lib/otp';
 import { hashBackupCode, generateBackupCodes } from '@/lib/otp';
 
+const MAX_CODE_ATTEMPTS = 5;
+
 export async function POST(request: NextRequest) {
     try {
         const auth = await getAuthUser();
@@ -32,6 +34,19 @@ export async function POST(request: NextRequest) {
         let ok = false;
         if (challenge && new Date() <= challenge.expiresAt && code) {
             ok = await verifyOtp(code, challenge.codeHash);
+            if (!ok) {
+                const updated = await prisma.twoFactorChallenge.update({
+                    where: { id: challenge.id },
+                    data: { attempts: { increment: 1 } },
+                });
+                if (updated.attempts >= MAX_CODE_ATTEMPTS) {
+                    // Invalidate the code so it cannot be guessed again
+                    await prisma.twoFactorChallenge.update({
+                        where: { id: challenge.id },
+                        data: { expiresAt: new Date() },
+                    });
+                }
+            }
         }
         if (!ok && code) {
             const backup = await prisma.twoFactorBackupCode.findFirst({

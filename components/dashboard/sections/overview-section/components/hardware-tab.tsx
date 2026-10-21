@@ -3,7 +3,18 @@
 import { useState, useMemo } from "react";
 import { formatCurrency } from "../lib/relative-time";
 import { CardPrimitive } from "../lib/card-primitive";
-import { Package, Building2, Store } from "lucide-react";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { EmptyState } from "../lib/empty-state";
+import { StatusPill } from "../lib/status-pill";
+import {
+  Package,
+  Building2,
+  Store,
+  Boxes,
+  Clock,
+  Wallet,
+  PiggyBank,
+} from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -11,7 +22,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 interface HardwareItem {
   id: string;
@@ -85,9 +95,11 @@ export function HardwareTab({ data }: { data: Record<string, unknown> }) {
   if (items.length === 0 && !d.hasHardware) {
     return (
       <CardPrimitive title="Hardware Inventory">
-        <p className="text-sm text-muted-foreground text-center py-10">
-          Hardware tracking is not enabled or no equipment has been catalogued yet.
-        </p>
+        <EmptyState
+          icon={<Boxes className="size-5" />}
+          title="No equipment catalogued yet"
+          description="Hardware tracking is not enabled, or nothing has been catalogued on this plan."
+        />
       </CardPrimitive>
     );
   }
@@ -95,29 +107,39 @@ export function HardwareTab({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-4">
       {/* Hardware KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Total Units</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{totalQuantity}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{totalItems} distinct items</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Pending Requests</p>
-          <p className={cn("text-2xl font-bold mt-1", pendingRequests > 0 ? "text-warning" : "text-foreground")}>
-            {pendingRequests}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Awaiting approval</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Monthly Rentals</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalMonthlyRent, currency)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Recurring cost</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Outstanding Deposits</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalDeposits, currency)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Refundable security</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Units"
+          value={totalQuantity.toString()}
+          subtitle={`${totalItems} distinct items`}
+          status="healthy"
+          icon={<Boxes className="h-4 w-4" />}
+          variant="violet"
+        />
+        <MetricCard
+          title="Pending Requests"
+          value={pendingRequests.toString()}
+          subtitle={pendingRequests > 0 ? "awaiting approval" : "nothing waiting"}
+          status={pendingRequests > 0 ? "warning" : "healthy"}
+          icon={<Clock className="h-4 w-4" />}
+          variant="amber"
+        />
+        <MetricCard
+          title="Monthly Rentals"
+          value={formatCurrency(totalMonthlyRent, currency)}
+          subtitle="recurring cost"
+          status="healthy"
+          icon={<Wallet className="h-4 w-4" />}
+          variant="cyan"
+        />
+        <MetricCard
+          title="Outstanding Deposits"
+          value={formatCurrency(totalDeposits, currency)}
+          subtitle="refundable security"
+          status="healthy"
+          icon={<PiggyBank className="h-4 w-4" />}
+          variant="emerald"
+        />
       </div>
 
       {/* Filter Row */}
@@ -166,7 +188,11 @@ export function HardwareTab({ data }: { data: Record<string, unknown> }) {
         subtitle={`${filteredItems.length} items listed`}
       >
         {filteredItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-10">No items match your filter criteria.</p>
+          <EmptyState
+            icon={<Package className="size-5" />}
+            title="No items match your filters"
+            description="Try widening the category or source filter to see more equipment."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredItems.map((item) => (
@@ -176,22 +202,22 @@ export function HardwareTab({ data }: { data: Record<string, unknown> }) {
                     <Package className="h-4 w-4 text-primary shrink-0" />
                     <h4 className="font-semibold text-foreground text-sm truncate">{item.name}</h4>
                   </div>
-                  <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold text-foreground shrink-0">
+                  <StatusPill tone="neutral" uppercase={false} className="shrink-0">
                     ×{item.quantity}
-                  </span>
+                  </StatusPill>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
+                  <StatusPill tone="primary" uppercase={false}>
                     {item.category}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
+                  </StatusPill>
+                  <StatusPill tone="neutral" uppercase={false}>
                     {item.source}
-                  </span>
+                  </StatusPill>
                   {item.condition && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
+                    <StatusPill tone="neutral" uppercase={false}>
                       {item.condition.replace("_", " ")}
-                    </span>
+                    </StatusPill>
                   )}
                 </div>
 

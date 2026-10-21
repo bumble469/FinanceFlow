@@ -1,5 +1,7 @@
 import { FileClock, Receipt, CalendarClock, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StatusPill } from "../lib/status-pill";
+import { EmptyState } from "../lib/empty-state";
 
 export function PendingApprovalsWidget({ expenseCount, extensionCount, showExpenses = true }: { expenseCount: number; extensionCount: number; showExpenses?: boolean }) {
   const total = (showExpenses ? expenseCount : 0) + extensionCount;
@@ -12,23 +14,18 @@ export function PendingApprovalsWidget({ expenseCount, extensionCount, showExpen
           Pending approvals
         </h3>
         {total > 0 ? (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide bg-warning/12 text-warning">
-            {total} waiting
-          </span>
+          <StatusPill tone="warning">{total} waiting</StatusPill>
         ) : (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide bg-success/12 text-success">
-            All clear
-          </span>
+          <StatusPill tone="success">All clear</StatusPill>
         )}
       </div>
 
       {total === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-success/12">
-            <CheckCircle2 className="h-5 w-5 text-success" />
-          </span>
-          <p className="text-sm text-muted-foreground text-center">Nothing needs your approval right now.</p>
-        </div>
+        <EmptyState
+          tone="success"
+          icon={<CheckCircle2 className="size-5" />}
+          description="Nothing needs your approval right now."
+        />
       ) : (
         <div className={cn("grid gap-3", showExpenses ? "grid-cols-2" : "grid-cols-1")}>
           {showExpenses && (

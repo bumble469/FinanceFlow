@@ -4,6 +4,9 @@ import { useMemo } from "react";
 import { formatCurrency } from "../lib/relative-time";
 import { CardPrimitive } from "../lib/card-primitive";
 import { DepartmentBreakdown } from "./department-breakdown";
+import { MetricCard } from "@/components/dashboard/components/metric-card";
+import { EmptyState } from "../lib/empty-state";
+import { ChartTooltip } from "../lib/chart-tooltip";
 import {
   ResponsiveContainer,
   BarChart,
@@ -14,7 +17,7 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, Wallet, ArrowDownCircle, PiggyBank, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DeptStat {
@@ -59,18 +62,72 @@ export function WorkspaceTab({ data }: { data: Record<string, unknown> }) {
     return departmentStats.reduce((s, dept) => s + dept.actualExpenses, 0);
   }, [departmentStats]);
 
+  const totalOpenTasks = useMemo(() => {
+    return departmentStats.reduce((s, dept) => s + dept.openTasks, 0);
+  }, [departmentStats]);
+
+  const avgCompletion = useMemo(() => {
+    if (departmentStats.length === 0) return 0;
+    const sum = departmentStats.reduce((s, dept) => s + dept.completionPct, 0);
+    return Math.round(sum / departmentStats.length);
+  }, [departmentStats]);
+
+  const overBudgetCount = useMemo(() => {
+    return departmentStats.filter((dept) => dept.budget > 0 && dept.actualExpenses > dept.budget).length;
+  }, [departmentStats]);
+
   if (departmentStats.length === 0) {
     return (
       <CardPrimitive title="Department Overview">
-        <p className="text-sm text-muted-foreground text-center py-12">
-          No departments configured in this workspace yet.
-        </p>
+        <EmptyState
+          icon={<Building className="size-5" />}
+          title="No departments yet"
+          description="Configure departments in this workspace to see budget and task rollups here."
+        />
       </CardPrimitive>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Departments"
+          value={departmentStats.length.toString()}
+          subtitle={`${departmentStats.reduce((s, d) => s + d.memberCount, 0)} members assigned`}
+          status="healthy"
+          icon={<Building className="h-4 w-4" />}
+          variant="violet"
+        />
+        <MetricCard
+          title="Total Allocated"
+          value={formatCurrency(totalAllocated, currency)}
+          subtitle={financeEnabled ? "across all departments" : "finance disabled"}
+          status="healthy"
+          icon={<Wallet className="h-4 w-4" />}
+          variant="cyan"
+        />
+        <MetricCard
+          title="Total Spend"
+          value={formatCurrency(totalSpent, currency)}
+          subtitle={overBudgetCount > 0 ? `${overBudgetCount} over budget` : "within budget"}
+          status={overBudgetCount > 0 ? "warning" : "healthy"}
+          icon={<ArrowDownCircle className="h-4 w-4" />}
+          variant="amber"
+        />
+        <MetricCard
+          title="Task Completion"
+          value={`${avgCompletion}%`}
+          subtitle={`${totalOpenTasks} tasks still open`}
+          status="healthy"
+          progressPercent={avgCompletion}
+          progressLabel="complete"
+          icon={<PiggyBank className="h-4 w-4" />}
+          variant="emerald"
+        />
+      </div>
+
       {/* Department Breakdown Pie + Summary */}
       {financeEnabled && (
         <CardPrimitive
@@ -103,13 +160,12 @@ export function WorkspaceTab({ data }: { data: Record<string, unknown> }) {
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip
-                  formatter={(v: number) => formatCurrency(v, currency)}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+                  content={
+                    <ChartTooltip
+                      currency={currency}
+                      formatValue={(v) => formatCurrency(v, currency)}
+                    />
+                  }
                 />
                 <Bar dataKey="budget" fill="var(--muted-foreground)" radius={[0, 4, 4, 0]} name="Budget" />
                 <Bar dataKey="actual" radius={[0, 4, 4, 0]} name="Actual Spend">
