@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { hashPassword, verifyPassword, validatePasswordStrength } from "@/lib/password";
 import { verifyOtp } from "@/lib/otp";
+import { reservePasswordAttempt } from "@/lib/code-attempts";
 
 const MAX_ATTEMPTS = 5;
 
@@ -32,30 +33,18 @@ export async function PATCH(req: NextRequest) {
     if (!challenge || challenge.expiresAt < new Date()) {
       return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 400 });
     }
-    if (challenge.attempts >= MAX_ATTEMPTS) {
-      // Invalidate the code so it cannot be guessed again
-      await prisma.passwordChangeCode.update({
-        where: { id: challenge.id },
-        data: { usedAt: new Date() },
-      });
+
+    const cleaned = String(code ?? "").replace(/\s/g, "");
+    if (!/^\d{6}$/.test(cleaned)) {
+      return NextResponse.json({ error: "Incorrect code" }, { status: 400 });
+    }
+    if (!(await reservePasswordAttempt(challenge.id))) {
       return NextResponse.json(
         { error: "Too many incorrect attempts. Request a new code." },
         { status: 429 }
       );
     }
-    const cleaned = String(code ?? "").replace(/\s/g, "");
-    if (!/^\d{6}$/.test(cleaned) || !(await verifyOtp(cleaned, challenge.codeHash))) {
-      const updated = await prisma.passwordChangeCode.update({
-        where: { id: challenge.id },
-        data: { attempts: { increment: 1 } },
-      });
-      if (updated.attempts >= MAX_ATTEMPTS) {
-        // Invalidate the code so it cannot be guessed again
-        await prisma.passwordChangeCode.update({
-          where: { id: challenge.id },
-          data: { usedAt: new Date() },
-        });
-      }
+    if (!(await verifyOtp(cleaned, challenge.codeHash))) {
       return NextResponse.json({ error: "Incorrect code" }, { status: 400 });
     }
 

@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
-import { verifyOtp } from '@/lib/otp';
-import { hashBackupCode, generateBackupCodes } from '@/lib/otp';
+import { verifyOtp, hashBackupCode, generateBackupCodes } from '@/lib/otp';
+import { reserveTwoFactorAttempt } from '@/lib/code-attempts';
 
 export async function POST(request: NextRequest) {
     try {
         const auth = await getAuthUser();
         if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { code } = (await request.json()) as { code: string };
+        const body = (await request.json().catch(() => null)) as { code?: string } | null;
+        const code = typeof body?.code === 'string' ? body.code.replace(/\s/g, '') : '';
         if (!code) {
             return NextResponse.json({ error: 'Code is required' }, { status: 400 });
         }
@@ -18,39 +19,26 @@ export async function POST(request: NextRequest) {
             where: { userId: auth.sub, usedAt: null },
             orderBy: { createdAt: 'desc' },
         });
-
         if (!challenge || new Date() > challenge.expiresAt) {
-            return NextResponse.json({ error: 'No valid verification code. Request a new one.' }, { status: 400 })
+            return NextResponse.json({ error: 'No valid verification code. Request a new one.' }, { status: 400 });
         }
 
-        const isValid = await verifyOtp(code, challenge.codeHash)
-        if (!isValid) {
-            await prisma.twoFactorChallenge.update({
-                where: { id: challenge.id },
-                data: { attempts: { increment: 1 } },
-            })
-            const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
-            if (updated && updated.attempts >= 5) {
-                await prisma.twoFactorChallenge.update({
-                    where: { id: challenge.id },
-                    data: { expiresAt: new Date() }, // invalidate immediately
-                })
-            }
-            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
+        if (!(await reserveTwoFactorAttempt(challenge.id))) {
+            return NextResponse.json(
+                { error: 'Too many incorrect attempts. Request a new code.' },
+                { status: 429 }
+            );
+        }
+        if (!(await verifyOtp(code, challenge.codeHash))) {
+            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
         }
 
         const backupCodes = generateBackupCodes(10);
         const hashed = await Promise.all(backupCodes.map((c) => hashBackupCode(c)));
 
         await prisma.$transaction([
-            prisma.twoFactorChallenge.update({
-                where: { id: challenge.id },
-                data: { usedAt: new Date() },
-            }),
-            prisma.twoFactorSettings.update({
-                where: { userId: auth.sub },
-                data: { enabled: true },
-            }),
+            prisma.twoFactorChallenge.update({ where: { id: challenge.id }, data: { usedAt: new Date() } }),
+            prisma.twoFactorSettings.update({ where: { userId: auth.sub }, data: { enabled: true } }),
             prisma.twoFactorBackupCode.createMany({
                 data: hashed.map((hash) => ({ userId: auth.sub, codeHash: hash })),
             }),

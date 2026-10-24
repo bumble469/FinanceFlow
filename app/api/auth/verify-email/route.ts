@@ -8,6 +8,7 @@ import {
   REFRESH_TOKEN_TTL,
 } from '@/lib/jwt';
 import { verifyOtp } from '@/lib/otp';
+import { reserveEmailAttempt } from '@/lib/code-attempts';
 
 const MAX_ATTEMPTS = 5;
 
@@ -47,30 +48,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (challenge.attempts >= MAX_ATTEMPTS) {
-      // Invalidate the code so it cannot be guessed again
-      await prisma.emailVerificationCode.update({
-        where: { id: challenge.id },
-        data: { usedAt: new Date() },
-      });
+
+    if (!(await reserveEmailAttempt(challenge.id))) {
       return NextResponse.json(
         { error: 'Too many wrong attempts. Please request a new code.' },
         { status: 429 }
       );
     }
-
     if (!(await verifyOtp(code, challenge.codeHash))) {
-      const updated = await prisma.emailVerificationCode.update({
-        where: { id: challenge.id },
-        data: { attempts: { increment: 1 } },
-      });
-      if (updated.attempts >= MAX_ATTEMPTS) {
-        // Invalidate the code so it cannot be guessed again
-        await prisma.emailVerificationCode.update({
-          where: { id: challenge.id },
-          data: { usedAt: new Date() },
-        });
-      }
       return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
     }
 

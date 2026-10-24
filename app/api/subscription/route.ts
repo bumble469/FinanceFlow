@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
+const PAYMENTS_TEST_MODE = process.env.PAYMENTS_TEST_MODE === "true";
+
 export async function GET() {
   try {
     const user = await getAuthUser();
@@ -27,8 +29,9 @@ export async function GET() {
   }
 }
 
-// POST — select a plan. For the free STARTER tier this activates immediately (no payment).
-// Paid tiers create a PENDING subscription — actual payment collection is a later phase.
+// POST — select a plan. The free STARTER tier activates immediately (no payment).
+// Paid tiers create a PENDING subscription (payment collection is a later phase),
+// unless PAYMENTS_TEST_MODE is on, in which case they activate immediately too.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -52,13 +55,15 @@ export async function POST(req: NextRequest) {
     else periodEnd.setFullYear(periodEnd.getFullYear() + 1);
 
     const isFree = price.plan.code === "STARTER";
+    const activateNow = isFree || PAYMENTS_TEST_MODE;
+    const status = activateNow ? "ACTIVE" : "PENDING";
 
     const subscription = await prisma.subscription.upsert({
       where: { accountId: account.id },
       update: {
         planId: price.planId,
         priceId: price.id,
-        status: isFree ? "ACTIVE" : "PENDING",
+        status,
         billingInterval: price.billingInterval,
         currency: price.currency,
         amount: price.amount,
@@ -73,7 +78,7 @@ export async function POST(req: NextRequest) {
         accountId: account.id,
         planId: price.planId,
         priceId: price.id,
-        status: isFree ? "ACTIVE" : "PENDING",
+        status,
         billingInterval: price.billingInterval,
         currency: price.currency,
         amount: price.amount,

@@ -8,6 +8,8 @@ import {
     REFRESH_TOKEN_TTL,
 } from '@/lib/jwt';
 import { verifyOtp } from '@/lib/otp';
+import { reserveTwoFactorAttempt } from '@/lib/code-attempts';
+import { backupCodeLimiter, isBlocked, recordFailure } from '@/lib/limiters';
 
 export async function POST(request: NextRequest) {
     try {
@@ -48,48 +50,38 @@ export async function POST(request: NextRequest) {
             const challenge = await prisma.twoFactorChallenge.findFirst({
                 where: { userId, usedAt: null },
                 orderBy: { createdAt: 'desc' },
-            })
-            if (challenge && new Date() <= challenge.expiresAt) {
-                const valid = await verifyOtp(code, challenge.codeHash)
-                if (valid) {
-                    await prisma.twoFactorChallenge.update({
-                        where: { id: challenge.id },
-                        data: { usedAt: new Date() },
-                    })
-                    verified = true
-                } else {
-                    await prisma.twoFactorChallenge.update({
-                        where: { id: challenge.id },
-                        data: { attempts: { increment: 1 } },
-                    })
-                    const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
-                    if (updated && updated.attempts >= 5) {
-                        await prisma.twoFactorChallenge.update({
-                            where: { id: challenge.id },
-                            data: { expiresAt: new Date() },
-                        })
-                    }
-                }
-            }
-        }
-        else if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
-            const backups = await prisma.twoFactorBackupCode.findMany({
-                where: { userId, usedAt: null },
             });
-            for (const b of backups) {
-                if (await verifyOtp(code, b.codeHash)) {
-                    await prisma.twoFactorBackupCode.update({
-                        where: { id: b.id },
+            if (challenge && new Date() <= challenge.expiresAt) {
+                if (!(await reserveTwoFactorAttempt(challenge.id))) {
+                    return NextResponse.json(
+                        { error: 'Too many incorrect attempts. Request a new code.' },
+                        { status: 429 }
+                    );
+                }
+                if (await verifyOtp(code, challenge.codeHash)) {
+                    await prisma.twoFactorChallenge.update({
+                        where: { id: challenge.id },
                         data: { usedAt: new Date() },
                     });
+                    verified = true;
+                }
+            }
+        } else if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
+            if (await isBlocked(backupCodeLimiter, userId)) {
+                return NextResponse.json(
+                    { error: 'Too many incorrect backup codes. Try again later.' },
+                    { status: 429 }
+                );
+            }
+            const backups = await prisma.twoFactorBackupCode.findMany({ where: { userId, usedAt: null } });
+            for (const b of backups) {
+                if (await verifyOtp(code, b.codeHash)) {
+                    await prisma.twoFactorBackupCode.update({ where: { id: b.id }, data: { usedAt: new Date() } });
                     verified = true;
                     break;
                 }
             }
-        }
-
-        if (!verified) {
-            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+            if (!verified) await recordFailure(backupCodeLimiter, userId);
         }
 
         const accessToken = await generateAccessToken({

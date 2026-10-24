@@ -9,8 +9,8 @@ import {
   generateEmailVerifyPendingToken,
 } from '@/lib/jwt';
 import { getOtpDestination } from '@/lib/two-factor';
-import bcrypt from 'bcryptjs';
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { failedLoginLimiter, isBlocked, recordFailure } from '@/lib/limiters';
 
 interface LoginRequestBody {
   email: string;
@@ -34,6 +34,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (await isBlocked(failedLoginLimiter, email)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many failed attempts. Try again in 15 minutes.' },
+        { status: 429 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -48,6 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user || !user.password) {
+      await recordFailure(failedLoginLimiter, email);
       return NextResponse.json(
         {
           success: false,
@@ -60,6 +68,7 @@ export async function POST(request: NextRequest) {
     const isValid = await verifyPassword(password, user.password);
 
     if (!isValid) {
+      await recordFailure(failedLoginLimiter, email);
       return NextResponse.json(
         {
           success: false,

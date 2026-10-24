@@ -7,10 +7,11 @@ import { sendEmail } from '@/lib/email';
 import { getOtpDestination } from '@/lib/two-factor';
 import { getClientIp } from '@/lib/utils';
 import { checkIpRateLimit } from '@/lib/rate-limit';
+import { reserveTwoFactorAttempt } from '@/lib/code-attempts';
+import { backupCodeLimiter, isBlocked, recordFailure } from '@/lib/limiters';
 
 const COOLDOWN_MS = 60 * 1000;
 const MAX_SENDS_PER_HOUR = 5;
-const MAX_CODE_ATTEMPTS = 5;
 const WINDOW_MS = 60 * 60 * 1000;
 const OTP_TTL_MS = 10 * 60 * 1000;
 
@@ -23,42 +24,33 @@ async function checkCode(userId: string, raw: string): Promise<boolean> {
             orderBy: { createdAt: 'desc' },
         })
         if (challenge && new Date() <= challenge.expiresAt) {
-            const valid = await verifyOtp(code, challenge.codeHash)
-            if (valid) {
+            if (!(await reserveTwoFactorAttempt(challenge.id))) return false
+            if (await verifyOtp(code, challenge.codeHash)) {
                 await prisma.twoFactorChallenge.update({
                     where: { id: challenge.id },
                     data: { usedAt: new Date() },
                 })
                 return true
             }
-            await prisma.twoFactorChallenge.update({
-                where: { id: challenge.id },
-                data: { attempts: { increment: 1 } },
-            })
-            const updated = await prisma.twoFactorChallenge.findUnique({ where: { id: challenge.id } })
-            if (updated && updated.attempts >= 5) {
-                await prisma.twoFactorChallenge.update({
-                    where: { id: challenge.id },
-                    data: { expiresAt: new Date() },
-                })
-            }
         }
         return false
     }
 
     if (/^[A-HJ-NP-Z2-9]{8}$/.test(code)) {
-        const backups = await prisma.twoFactorBackupCode.findMany({ where: { userId, usedAt: null } });
+        if (await isBlocked(backupCodeLimiter, userId)) return false
+        const backups = await prisma.twoFactorBackupCode.findMany({ where: { userId, usedAt: null } })
         for (const b of backups) {
             if (await verifyOtp(code, b.codeHash)) {
                 await prisma.twoFactorBackupCode.update({
                     where: { id: b.id },
                     data: { usedAt: new Date() },
-                });
-                return true;
+                })
+                return true
             }
         }
+        await recordFailure(backupCodeLimiter, userId)
     }
-    return false;
+    return false
 }
 
 export async function POST(request: NextRequest) {
