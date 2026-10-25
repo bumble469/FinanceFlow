@@ -22,14 +22,27 @@ interface GroupPanelProps {
   onRead: (workItemId: string) => void;
 }
 
-/** Renders highlighted @mentions in message body text */
-function MessageBody({ body }: { body: string }) {
-  const parts = body.split(/(@\w[\w\s]*)/g);
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function MessageBody({ body, isOwn, handles }: { body: string; isOwn: boolean; handles: string[] }) {
+  const parts = useMemo(() => {
+    if (handles.length === 0) return [body];
+    const pattern = [...handles].sort((a, b) => b.length - a.length).map(escapeRegExp).join("|");
+    return body.split(new RegExp(`(@(?:${pattern})(?!\\w))`, "gi"));
+  }, [body, handles]);
+
   return (
     <p className="whitespace-pre-wrap break-words">
       {parts.map((part, i) =>
-        part.startsWith("@") ? (
-          <span key={i} className="font-semibold text-primary/90 bg-primary/10 rounded px-0.5">
+        i % 2 === 1 ? (
+          <span
+            key={i}
+            className={cn(
+              "font-semibold rounded px-1",
+              isOwn ? "text-primary-foreground underline underline-offset-2"
+              : "bg-primary/10 text-primary"
+            )}
+          >
             {part}
           </span>
         ) : (
@@ -176,12 +189,20 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // @ mention state
+  const mentionHandles = useMemo(
+    () => (header?.members ?? []).map((m) => (m.name || m.email.split("@")[0]).trim()).filter(Boolean),
+    [header?.members]
+  );
+
   const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = picker closed
+
+  const mentionableMembers = useMemo(
+    () => (header?.members ?? []).filter((m) => m.userId !== currentUser?.id),
+    [header?.members, currentUser?.id]
+  );
 
   const isReadOnly = header?.workItem.status === "ARCHIVED" || header?.workItem.status === "CANCELLED";
 
-  // Load header + messages, mark read
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -439,7 +460,7 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
                         />
                       </div>
                     )}
-                    {m.body && <MessageBody body={m.body} />}
+                    {m.body && <MessageBody body={m.body} isOwn={isOwn} handles={mentionHandles} />}
                     <p className={`text-[10px] mt-0.5 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                       {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
@@ -457,10 +478,10 @@ export function GroupPanel({ workItemId, onBack, onRead }: GroupPanelProps) {
         <SlashPalette palette={palette} />
 
         {/* @ mention picker */}
-        {mentionQuery !== null && header.members.length > 0 && (
+        {mentionQuery !== null && mentionableMembers.length > 0 && (
           <MentionPicker
             query={mentionQuery}
-            members={header.members}
+            members={mentionableMembers}
             onPick={handleMentionPick}
             onDismiss={() => setMentionQuery(null)}
           />

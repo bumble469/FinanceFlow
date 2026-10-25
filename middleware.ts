@@ -15,7 +15,6 @@ const strictPrefixes = [
 export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
-    // Rate limit the sensitive auth routes first, before anything else runs
     if (strictPrefixes.some((p) => path.startsWith(p))) {
         const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
         try {
