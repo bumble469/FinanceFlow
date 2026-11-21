@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    id: "2026-11-21-task-management-and-chat-updates",
+    date: "2026-11-21",
+    title: "Task Management & Chat Updates",
+    tag: "Improved",
+    bullets: [
+      "Resolved an issue preventing Admins from taking up tasks directly.",
+      "Added time information to task due dates for more precise deadline tracking.",
+      "Investigated the chat issue caused by Vercel's limitations with persistent WebSocket connections; currently unresolved.",
+    ],
+  },
+  {
     id: "2026-11-21-task-management-and-bug-fixes",
     date: "2026-11-21",
     title: "Task Management, Subscription & Stability Improvements",
