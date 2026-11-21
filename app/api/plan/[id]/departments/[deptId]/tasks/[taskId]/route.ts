@@ -57,6 +57,11 @@ export async function PATCH(
       }
     }
 
+    // Due date can be changed but never cleared
+    if (dueDate !== undefined && !extension && (!dueDate || isNaN(new Date(dueDate).getTime()))) {
+      return NextResponse.json({ error: "Due date and time is required" }, { status: 400 });
+    }
+
     // Validate status if provided
     const VALID_STATUSES = ["TODO", "IN_PROGRESS", "DONE", "BLOCKED", "SUBMITTED", "CHANGES_REQUESTED", "COMPLETED"];
     if (status !== undefined && !VALID_STATUSES.includes(status)) {
