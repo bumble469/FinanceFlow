@@ -273,8 +273,9 @@ export function AddEditMemberDialog({
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join("-");
 
+  // CO_ADMIN can now be assigned to departments (for workspace filtering / task scope)
   const showDepartments =
-    isEditMode && formData.role && formData.role !== "CO_ADMIN";
+    isEditMode && !!formData.role;
 
   const showCost = isEditMode && !!formData.role;
 

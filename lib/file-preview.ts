@@ -23,7 +23,7 @@ export function getPreviewKind(name: string, mime?: string | null): PreviewKind 
   if (m === "application/pdf" || ext === "pdf") return "pdf";
   if (m.startsWith("video/") || ["mp4","webm","mov"].includes(ext)) return "video";
   if (m.startsWith("audio/") || ["mp3","wav","ogg","m4a"].includes(ext)) return "audio";
-  if (ext === "docx") return "docx";
+  if (["docx","doc"].includes(ext) || m === "application/msword" || m === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx";
   if (["xlsx","xls","csv"].includes(ext)) return "sheet";
   if (m.startsWith("text/") || TEXT_EXT.includes(ext)) return "text";
   return "none"; // .doc, .ppt(x), zip, etc. → download only

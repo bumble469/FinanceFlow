@@ -77,7 +77,7 @@ export function ConnectionNotifier() {
       }
     };
 
-    const handleGroup = (payload: { workItemId: string; message: IncomingMessage }) => {
+    const handleGroup = (payload: { workItemId: string; message: IncomingMessage; mentioned?: boolean }) => {
       const msg = payload?.message;
       if (!msg) return;
       if (msg.senderId && currentUser?.id && msg.senderId === currentUser.id) return;
@@ -85,7 +85,6 @@ export function ConnectionNotifier() {
       const isActive = payload.workItemId === activeGroupId;
 
       if (isActive) {
-        // Same as direct: an open group is read on arrival.
         authClient
           .request(`/api/groups/${payload.workItemId}/read`, { method: "PATCH" })
           .catch(() => {});
@@ -94,21 +93,22 @@ export function ConnectionNotifier() {
 
       bumpUnreadCount(1);
 
-      if (prefs.messageSnackbarEnabled && !isOnConnectionsPage) {
+      const mentioned = !!payload.mentioned;
+      const text = msg.body || msg.attachmentName || "New message";
+
+      const showToast = mentioned || (prefs.messageSnackbarEnabled && !isOnConnectionsPage);
+
+      if (showToast) {
         addToast({
           id: msg.id,
           senderName: msg.sender?.name || "Someone",
-          body: msg.body || msg.attachmentName || "New message",
+          body: mentioned ? `mentioned you: ${text}` : text,
           targetId: payload.workItemId,
           kind: "group",
         });
       }
     };
 
-    // Reading a conversation clears its unread messages server-side. The
-    // socket event tells us one connection was read, but the badge total
-    // spans every connection, so we re-sync from the server rather than
-    // guessing a delta.
     const handleRead = () => {
       refreshUnread();
     };

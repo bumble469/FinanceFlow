@@ -21,8 +21,9 @@ export default function TwoFactorSetupPage() {
     const [loading, setLoading] = useState(false);
     const [backupCodes, setBackupCodes] = useState<string[]>([]);
     const [error, setError] = useState('');
-    const [remaining, setRemaining] = useState(3);
+    const [remaining, setRemaining] = useState(5);
     const [cooldown, setCooldown] = useState(0);
+    const [lockedOut, setLockedOut] = useState(false);
     const [resending, setResending] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -45,9 +46,10 @@ export default function TwoFactorSetupPage() {
                 const result = await res.json();
                 if (!res.ok) {
                     setError(result.error || 'Failed to start setup');
+                    if (result.lockedOut) setLockedOut(true);
                     return;
                 }
-                setRemaining(result.remaining ?? 0); setCooldown(30);
+                setRemaining(result.remaining ?? 4); setCooldown(30);
                 setStep('verify');
             } else if (step === 'verify') {
                 const res = await fetch('/api/auth/two-factor/verify-setup', {
@@ -81,7 +83,11 @@ export default function TwoFactorSetupPage() {
             });
             const result = await res.json().catch(() => ({}));
             if (typeof result.remaining === 'number') setRemaining(result.remaining);
-            if (!res.ok) { setError(result.error || 'Could not resend the code'); return; }
+            if (!res.ok) {
+                setError(result.error || 'Could not resend the code');
+                if (result.lockedOut) setLockedOut(true);
+                return;
+            }
             setCooldown(30);
         } catch {
             setError('Something went wrong');
@@ -203,7 +209,9 @@ export default function TwoFactorSetupPage() {
                         </InputOTP>
                         {error && <p className="text-destructive text-sm mt-2">{error}</p>}
                         <div className="mt-4 text-center text-sm text-muted-foreground">
-                            {remaining > 0 ? (
+                            {lockedOut ? (
+                                <p className="text-destructive font-medium">Too many attempts. Please come back after 1 hour.</p>
+                            ) : remaining > 0 ? (
                                 <>
                                     Didn&apos;t receive the code?{' '}
                                     <button
@@ -216,7 +224,7 @@ export default function TwoFactorSetupPage() {
                                     </button>
                                 </>
                             ) : (
-                                'No resends left. Try again in 15 minutes.'
+                                'No resends left. Please come back after 1 hour.'
                             )}
                             <div>
                                 <button type="button" onClick={() => { setStep('contact'); setCode(''); setError(''); }} className="mt-2 text-muted-foreground hover:text-foreground">

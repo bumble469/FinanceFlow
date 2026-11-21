@@ -9,9 +9,10 @@ import { getClientIp } from '@/lib/utils';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
-const COOLDOWN_MS = 60 * 1000;
-const MAX_SENDS_PER_HOUR = 5;
-const WINDOW_MS = 60 * 60 * 1000;
+const COOLDOWN_MS = 30 * 1000;       // 30 s between sends
+const MAX_SENDS_PER_WINDOW = 5;       // max 5 sends …
+const WINDOW_MS = 30 * 1000;         // … in any 30-second window
+const LOCKOUT_MS = 60 * 60 * 1000;   // 1-hour lockout after hitting the window limit
 const OTP_TTL_MS = 10 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
@@ -70,21 +71,42 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Per-user limits. Failed sends are also recorded as challenges, so they count.
+        // Per-user limits: 5 attempts in any 30-second window → 1-hour lockout.
+        const windowCutoff = new Date(Date.now() - WINDOW_MS);
+        const lockoutCutoff = new Date(Date.now() - LOCKOUT_MS);
+
         const recent = await prisma.twoFactorChallenge.findMany({
-            where: { userId: auth.sub, createdAt: { gte: new Date(Date.now() - WINDOW_MS) } },
+            where: { userId: auth.sub, createdAt: { gte: windowCutoff } },
             orderBy: { createdAt: 'desc' },
             select: { createdAt: true },
         });
-        if (recent.length >= MAX_SENDS_PER_HOUR) {
+
+        // Check if a lockout burst (5 in 30 s) happened within the last hour
+        const lastHour = await prisma.twoFactorChallenge.findMany({
+            where: { userId: auth.sub, createdAt: { gte: lockoutCutoff } },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+
+        const isLockedOut = (() => {
+            if (lastHour.length < MAX_SENDS_PER_WINDOW) return false;
+            for (let i = 0; i <= lastHour.length - MAX_SENDS_PER_WINDOW; i++) {
+                const oldest = lastHour[i + MAX_SENDS_PER_WINDOW - 1].createdAt.getTime();
+                const newest = lastHour[i].createdAt.getTime();
+                if (newest - oldest <= WINDOW_MS) return true;
+            }
+            return false;
+        })();
+
+        if (isLockedOut || recent.length >= MAX_SENDS_PER_WINDOW) {
             return NextResponse.json(
-                { error: 'Too many codes requested. Please try again later.', remaining: 0 },
+                { error: 'Too many attempts. Please come back after 1 hour.', remaining: 0, lockedOut: true },
                 { status: 429 }
             );
         }
         if (recent[0] && Date.now() - recent[0].createdAt.getTime() < COOLDOWN_MS) {
             return NextResponse.json(
-                { error: 'Please wait before requesting another code.', remaining: MAX_SENDS_PER_HOUR - recent.length },
+                { error: 'Please wait 30 seconds before requesting another code.', remaining: MAX_SENDS_PER_WINDOW - recent.length },
                 { status: 429 }
             );
         }
@@ -146,7 +168,7 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, remaining: MAX_SENDS_PER_WINDOW - recent.length - 1 });
     } catch (error) {
         console.error('[2FA enable] Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

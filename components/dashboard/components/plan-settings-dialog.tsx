@@ -142,6 +142,12 @@ export function PlanSettingsDialog({ open, onOpenChange, planId }: PlanSettingsD
   );
   const [savingEditingPref, setSavingEditingPref] = useState(false);
 
+  // admins taking up tasks
+  const [allowAdminTakeUp, setAllowAdminTakeUp] = useState(
+    currentPlanMeta?.allowAdminTakeUpTasks ?? false
+  );
+  const [savingTakeUp, setSavingTakeUp] = useState(false);
+
   // danger zone
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -168,6 +174,10 @@ export function PlanSettingsDialog({ open, onOpenChange, planId }: PlanSettingsD
   useEffect(() => {
     setAllowMultipleEditing(currentPlanMeta?.allowMultipleEditing ?? true);
   }, [currentPlanMeta?.allowMultipleEditing]);
+
+  useEffect(() => {
+    setAllowAdminTakeUp(currentPlanMeta?.allowAdminTakeUpTasks ?? false);
+  }, [currentPlanMeta?.allowAdminTakeUpTasks]);
 
   // ── handlers ────────────────────────────────────────────────────────────────
 
@@ -229,6 +239,27 @@ export function PlanSettingsDialog({ open, onOpenChange, planId }: PlanSettingsD
       setAllowMultipleEditing(!value);
     } finally {
       setSavingEditingPref(false);
+    }
+  };
+
+  const handleTakeUpToggle = async (value: boolean) => {
+    if (!isOwner) return;
+    setAllowAdminTakeUp(value);
+    setSavingTakeUp(true);
+    try {
+      await authClient.request(`/api/plan/${planId}`, {
+        method: "PATCH",
+        data: { allowAdminTakeUpTasks: value },
+      });
+      if (currentPlanMeta) {
+        setCurrentPlanMeta({ ...currentPlanMeta, allowAdminTakeUpTasks: value });
+      }
+    } catch (err) {
+      console.error("Failed to update admin take-up preference:", err);
+      setAllowAdminTakeUp(!value);
+      show("Failed to update setting", "error");
+    } finally {
+      setSavingTakeUp(false);
     }
   };
 
@@ -465,6 +496,56 @@ export function PlanSettingsDialog({ open, onOpenChange, planId }: PlanSettingsD
                         disabled={!perms.canManagePlanSettings || savingEditingPref}
                       />
                     </SettingRow>
+                    <div className="rounded-lg border border-border px-4 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <Label>Co-admins and tasks</Label>
+                        {!isOwner && <Lock className="h-3 w-3 text-muted-foreground" />}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Admins can always assign co-admins to tasks or remove them.
+                        {!isOwner && " Only the plan owner can change this setting."}
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        {[
+                          {
+                            value: true,
+                            title: "Allow co-admins to take up tasks",
+                            desc: "Co-admins can add themselves to tasks in their departments. Admins can still assign or remove them.",
+                          },
+                          {
+                            value: false,
+                            title: "Don't allow",
+                            desc: "Co-admins can't take up tasks. Only an admin assigns or removes them.",
+                          },
+                        ].map((opt) => {
+                          const active = allowAdminTakeUp === opt.value;
+                          return (
+                            <button
+                              key={String(opt.value)}
+                              type="button"
+                              disabled={!isOwner || savingTakeUp}
+                              onClick={() => !active && handleTakeUpToggle(opt.value)}
+                              className={cn(
+                                "flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                                active ? "border-foreground bg-muted/40" : "border-border",
+                                isOwner && !savingTakeUp ? "cursor-pointer hover:bg-muted/30" : "cursor-not-allowed opacity-70"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "mt-1 h-3.5 w-3.5 shrink-0 rounded-full border",
+                                  active ? "border-foreground bg-foreground" : "border-muted-foreground"
+                                )}
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-medium text-foreground">{opt.title}</span>
+                                <span className="block text-xs text-muted-foreground">{opt.desc}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <SettingRow
                       title="Members can invite others"
                       description="Let non-admin members send invitations."
