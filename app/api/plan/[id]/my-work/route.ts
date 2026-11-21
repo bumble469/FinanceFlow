@@ -10,7 +10,14 @@ async function resolveAccess(planId: string, userId: string) {
     ? !!(await prisma.workItem.findFirst({ where: { id: planId, accountId: account.id } }))
     : false;
 
-  if (isOwner) return { isOwner: true, role: "OWNER" as const, memberId: null as string | null };
+  if (isOwner) {
+    // the owner also has an ADMIN member row (created with the plan) — that's the id tasks are assigned to
+    const ownerMember = await prisma.workItemMember.findFirst({
+      where: { workItemId: planId, userId },
+      select: { id: true },
+    });
+    return { isOwner: true, role: "OWNER" as const, memberId: (ownerMember?.id ?? null) as string | null };
+  }
 
   const member = await prisma.workItemMember.findFirst({ where: { workItemId: planId, userId } });
   if (!member) return null;
@@ -25,6 +32,7 @@ const TASK_INCLUDE = {
     },
   },
   phase: { select: { id: true, name: true } },
+  department: { select: { id: true, name: true } },
   reactions: {
     include: { author: { include: { user: { select: { name: true } } } } },
   },
@@ -57,6 +65,7 @@ function formatTask(t: any) {
     status: t.status,
     requirement: t.requirement ?? null,
     departmentId: t.departmentId,
+    departmentName: t.department?.name ?? null,
     phaseId: t.phaseId,
     phaseName: t.phase?.name ?? null,
     dueDate: t.dueDate ? t.dueDate.toISOString() : null,
@@ -143,6 +152,20 @@ export async function GET(req: NextRequest, { params }: Params) {
     const departmentId = req.nextUrl.searchParams.get("departmentId");
     let tasks: any[] = [];
 
+    // Cross-department "my tasks": everything assigned to the caller
+    const mine = req.nextUrl.searchParams.get("mine") === "1";
+    if (mine && access.memberId) {
+      const myTasks = await prisma.task.findMany({
+        where: {
+          workItemId: planId,
+          members: { some: { workItemMemberId: access.memberId } },
+        },
+        include: TASK_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      });
+      tasks = myTasks.map(formatTask);
+    }
+
     if (departmentId) {
       // Make sure the caller is allowed to see this department at all
       if (departmentIds && !departmentIds.includes(departmentId)) {
@@ -166,11 +189,17 @@ export async function GET(req: NextRequest, { params }: Params) {
       tasks = rawTasks.map(formatTask);
     }
 
+    const planRow = await prisma.workItem.findUnique({
+      where: { id: planId },
+      select: { allowAdminTakeUpTasks: true },
+    });
+
     return NextResponse.json({
       success: true,
       data: {
         role: access.isOwner ? "OWNER" : access.role,
         memberId: access.memberId,
+        takeUpEnabled: planRow?.allowAdminTakeUpTasks === true,
         departments: deptCards,
         tasks,
       },

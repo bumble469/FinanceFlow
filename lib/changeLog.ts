@@ -10,6 +10,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    id: "2026-11-21-task-management-and-bug-fixes",
+    date: "2026-11-21",
+    title: "Task Management, Subscription & Stability Improvements",
+    tag: "Improved",
+    bullets: [
+      "Enabled Admins to take up tasks directly, assign tasks to Co-Admins, or leave task ownership open for them to pick up.",
+      "Fixed subscription-related bugs and improved subscription handling.",
+      "Relaxed the two-step verification rate limit to prevent overly restrictive access.",
+      "Fixed an issue where plans were not reloading correctly.",
+      "Resolved an issue in non-finance mode where departments without budgets were unable to create tasks."
+    ],
+  },
+  {
     id: "2026-10-20-individual-plan-overview",
     date: "2026-10-20",
     title: "Individual Plan Overview — Categorization & Bifurcation",

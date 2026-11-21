@@ -27,6 +27,7 @@ export interface CurrentPlanMeta {
   hasHardware?: boolean;
   allowMultipleEditing?: boolean;
   financeEnabled?: boolean;
+  allowAdminTakeUpTasks?: boolean;
   description?: string | null;
 }
 

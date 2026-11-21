@@ -29,6 +29,8 @@ import {
   FileText,
   Image as ImageIcon,
   Video,
+  UserPlus,
+  UserMinus,
 } from "lucide-react";
 import { useSnackbar } from "@/lib/useSnackbar";
 import { getPermissions, type PlanPermissions } from "@/lib/permissions";
@@ -59,6 +61,7 @@ type TaskItem = {
   description: string | null;
   status: TaskStatus;
   departmentId: string | null;
+  departmentName?: string | null;
   phaseId: string | null;
   phaseName: string | null;
   dueDate: string | null;
@@ -129,11 +132,22 @@ export function Workspace({ planId }: { planId: string }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
 
+  // admin take-up
+  const [view, setView] = useState<"departments" | "mine">("departments");
+  const [myMemberId, setMyMemberId] = useState<string | null>(null);
+  const [takeUpEnabled, setTakeUpEnabled] = useState(false);
+
+  // Admin/Owner can always take up tasks; a co-admin only if the plan allows it
+  const canTakeUpSelf =
+    role === "OWNER" || role === "ADMIN" || (role === "CO_ADMIN" && takeUpEnabled);
+
   const fetchDepartments = useCallback(async () => {
     setLoadingDepts(true);
     try {
       const res = await authClient.request(`/api/plan/${planId}/my-work`);
       setDepartments(res.data.data.departments);
+      setMyMemberId(res.data.data.memberId ?? null);
+      setTakeUpEnabled(res.data.data.takeUpEnabled === true);
     } catch (err) {
       console.error("Failed to fetch my-work departments:", err);
     } finally {
@@ -184,7 +198,39 @@ export function Workspace({ planId }: { planId: string }) {
         </p>
       </div>
 
-      {!selectedDept ? (
+      {isAdminLevel && !selectedDept && (
+        <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+          {([
+            { key: "departments", label: "Departments" },
+            { key: "mine", label: "My tasks" },
+          ] as const).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setView(t.key)}
+              className={cn(
+                "cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                view === t.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === "mine" && isAdminLevel && !selectedDept ? (
+        <MyTasksView
+          planId={planId}
+          memberId={myMemberId ?? undefined}
+          perms={perms}
+          canAnnotate={canAnnotate}
+          takeUpEnabled={canTakeUpSelf}
+          show={show}
+        />
+      ) : !selectedDept ? (
         <DepartmentGrid
           departments={departments}
           loading={loadingDepts}
@@ -203,7 +249,9 @@ export function Workspace({ planId }: { planId: string }) {
           canAnnotate={canAnnotate}
           isMember={role === "MEMBER"}
           perms={perms}
-          memberId={currentPlanMeta?.memberId ?? undefined}
+          memberId={myMemberId ?? currentPlanMeta?.memberId ?? undefined}
+          isAdminLevel={isAdminLevel}
+          takeUpEnabled={canTakeUpSelf}
           onTaskUpdated={(updated) =>
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)))
           }
@@ -216,6 +264,160 @@ export function Workspace({ planId }: { planId: string }) {
 }
 
 // ─── Department grid ─────────────────────────────────────────────────────
+
+function MyTasksView({
+  planId,
+  memberId,
+  perms,
+  canAnnotate,
+  takeUpEnabled,
+  show,
+}: {
+  planId: string;
+  memberId?: string;
+  perms: PlanPermissions;
+  canAnnotate: boolean;
+  takeUpEnabled: boolean;
+  show: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "TODO" | "IN_PROGRESS" | "REVIEW" | "COMPLETED">("ALL");
+  const [deptFilter, setDeptFilter] = useState("ALL");
+
+  const fetchMine = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await authClient.request(`/api/plan/${planId}/my-work?mine=1`);
+      setTasks(res.data.data.tasks);
+    } catch (err) {
+      console.error("Failed to fetch my tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [planId]);
+
+  useEffect(() => {
+    fetchMine();
+  }, [fetchMine]);
+
+  const changeStatus = async (task: TaskItem, newStatus: TaskStatus) => {
+    if (!task.departmentId) return;
+    try {
+      const res = await authClient.request(
+        `/api/plan/${planId}/departments/${task.departmentId}/tasks/${task.id}`,
+        { method: "PATCH", data: { status: newStatus } }
+      );
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id ? { ...t, status: res.data.status, completedAt: res.data.completedAt ?? null } : t
+        )
+      );
+      show("Task updated", "success");
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      show("Failed to update task", "error");
+    }
+  };
+
+  const deptOptions = Array.from(
+    new Map(
+      tasks.filter((t) => t.departmentId).map((t) => [t.departmentId as string, t.departmentName ?? "Department"])
+    ).entries()
+  );
+
+  const matchesStatus = (t: TaskItem) => {
+    if (statusFilter === "ALL") return true;
+    if (statusFilter === "COMPLETED") return t.status === "COMPLETED" || t.status === "DONE";
+    if (statusFilter === "REVIEW") return t.status === "SUBMITTED" || t.status === "CHANGES_REQUESTED";
+    return t.status === statusFilter;
+  };
+
+  const visible = tasks.filter(
+    (t) => matchesStatus(t) && (deptFilter === "ALL" || t.departmentId === deptFilter)
+  );
+
+  const selectClass =
+    "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground cursor-pointer";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className={selectClass}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="TODO">Pending</option>
+          <option value="IN_PROGRESS">Ongoing</option>
+          <option value="REVIEW">In review / changes requested</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+        <select className={selectClass} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+          <option value="ALL">All departments</option>
+          {deptOptions.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          {visible.length} of {tasks.length} task{tasks.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading your tasks...</p>
+      ) : visible.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+          {tasks.length === 0
+            ? takeUpEnabled
+              ? "You haven't taken up any tasks yet. Open a department and use \"Take up\" on a task."
+              : "Tasks an admin assigns to you will show up here."
+            : "No tasks match these filters."}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((task) => (
+            <div key={task.id} className="space-y-1">
+              {task.departmentName && (
+                <p className="px-1 text-xs font-medium text-muted-foreground">{task.departmentName}</p>
+              )}
+              <TaskCard
+                task={task}
+                planId={planId}
+                deptId={task.departmentId ?? ""}
+                canAnnotate={canAnnotate}
+                isMember={false}
+                canRequestExtension={false}
+                canSubmitWork={perms.canSubmitTaskWork(true)}
+                canApproveSubmission={perms.canApproveTaskSubmission(task.departmentId ?? "")}
+                isAssignedToMe={task.assignees.some((a) => a.workItemMemberId === memberId)}
+                canTakeUp={takeUpEnabled}
+                canLeave
+                milestoneDueDate={
+                  task.milestones && task.milestones.length > 0
+                    ? task.milestones
+                        .map((m) => m.dueDate)
+                        .filter((d): d is string => !!d)
+                        .sort()[0]
+                    : undefined
+                }
+                onRequestStatusChange={(s) => changeStatus(task, s)}
+                onTaskUpdated={(updated) =>
+                  setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)))
+                }
+                onWorkflowChanged={fetchMine}
+                show={show}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DepartmentGrid({
   departments,
@@ -329,6 +531,8 @@ function DepartmentDetail({
   isMember,
   perms,
   memberId,
+  isAdminLevel,
+  takeUpEnabled,
   onTaskUpdated,
   onRefreshTasks,
   show,
@@ -343,12 +547,18 @@ function DepartmentDetail({
   isMember: boolean;
   perms: PlanPermissions;
   memberId?: string;
+  isAdminLevel: boolean;
+  takeUpEnabled: boolean;
   onTaskUpdated: (task: TaskItem) => void;
   onRefreshTasks: () => void;
   show: (msg: string, type?: "success" | "error") => void;
 }) {
   const [statusChangeFor, setStatusChangeFor] = useState<{ task: TaskItem; newStatus: TaskStatus } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<"all" | "mine">("all");
+
+  const isAssignedToMe = (t: TaskItem) => t.assignees.some((a) => a.workItemMemberId === memberId);
+  const visibleTasks = taskFilter === "mine" ? tasks.filter(isAssignedToMe) : tasks;
 
   const handleConfirmStatusChange = async () => {
     if (!statusChangeFor) return;
@@ -388,15 +598,42 @@ function DepartmentDetail({
         </div>
       </div>
 
+      {isAdminLevel && (
+        <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+          {([
+            { key: "all", label: "All tasks" },
+            { key: "mine", label: "My tasks" },
+          ] as const).map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setTaskFilter(f.key)}
+              className={cn(
+                "cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                taskFilter === f.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading tasks...</p>
-      ) : tasks.length === 0 ? (
+      ) : visibleTasks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-          {isMember ? "No tasks assigned to you here yet." : "No tasks in this department yet."}
+          {isMember
+            ? "No tasks assigned to you here yet."
+            : taskFilter === "mine"
+              ? "You haven't taken up any tasks in this department."
+              : "No tasks in this department yet."}
         </div>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => (
+          {visibleTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -416,6 +653,9 @@ function DepartmentDetail({
                   : undefined
               }
               onRequestStatusChange={(newStatus) => setStatusChangeFor({ task, newStatus })}
+              isAssignedToMe={isAssignedToMe(task)}
+              canTakeUp={isAdminLevel && takeUpEnabled}
+              canLeave={isAdminLevel}
               onTaskUpdated={onTaskUpdated}
               onWorkflowChanged={onRefreshTasks}
               show={show}
@@ -462,6 +702,9 @@ function TaskCard({
   canApproveSubmission,
   milestoneDueDate,
   onRequestStatusChange,
+  isAssignedToMe,
+  canTakeUp,
+  canLeave,
   onTaskUpdated,
   onWorkflowChanged,
   show,
@@ -476,6 +719,9 @@ function TaskCard({
   canApproveSubmission: boolean;
   milestoneDueDate?: string;
   onRequestStatusChange: (status: TaskStatus) => void;
+  isAssignedToMe: boolean;
+  canTakeUp: boolean;
+  canLeave: boolean;
   onTaskUpdated: (task: TaskItem) => void;
   onWorkflowChanged: () => void;
   show: (msg: string, type?: "success" | "error") => void;
@@ -489,6 +735,23 @@ function TaskCard({
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   const isDone = task.status === "DONE" || task.status === "COMPLETED";
+  const [takingUp, setTakingUp] = useState(false);
+
+  const handleTakeUp = async (leave: boolean) => {
+    setTakingUp(true);
+    try {
+      await authClient.request(
+        `/api/plan/${planId}/departments/${deptId}/tasks/${task.id}/take-up`,
+        { method: leave ? "DELETE" : "POST" }
+      );
+      show(leave ? "You left this task" : "You took up this task", "success");
+      onWorkflowChanged();
+    } catch (err: any) {
+      show(err?.response?.data?.error || "Could not update your assignment", "error");
+    } finally {
+      setTakingUp(false);
+    }
+  };
 
   useEffect(() => {
     if (canApproveSubmission && task.status === "SUBMITTED") fetchSubmissions();
@@ -638,6 +901,30 @@ function TaskCard({
                   </Button>
                 }
               />
+            )}
+            {canTakeUp && !isAssignedToMe && !isDone && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 px-2 text-xs cursor-pointer"
+                disabled={takingUp}
+                onClick={() => handleTakeUp(false)}
+              >
+                <UserPlus className="h-3 w-3" />
+                Take up
+              </Button>
+            )}
+            {canLeave && isAssignedToMe && !isDone && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 px-2 text-xs cursor-pointer text-muted-foreground"
+                disabled={takingUp}
+                onClick={() => handleTakeUp(true)}
+              >
+                <UserMinus className="h-3 w-3" />
+                Leave
+              </Button>
             )}
             {task.status === "TODO" && (
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs cursor-pointer" onClick={() => onRequestStatusChange("IN_PROGRESS")}>

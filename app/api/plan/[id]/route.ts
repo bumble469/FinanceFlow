@@ -178,7 +178,7 @@ export async function PATCH(
     const body = await request.json();
     const { name, status, budget, description, currency, startDate, endDate, 
       methodology, eventDate, venue, hasTicketing, hasStalls, hasHardware, 
-      allowMultipleEditing, allowConnectionsGroup, financeEnabled } = body;
+      allowMultipleEditing, allowConnectionsGroup, financeEnabled, allowAdminTakeUpTasks } = body;
 
     if (status && !Object.values(WorkItemStatus).includes(status)) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
@@ -201,6 +201,7 @@ export async function PATCH(
           ...(allowMultipleEditing !== undefined ? { allowMultipleEditing: !!allowMultipleEditing } : {}),
           ...(allowConnectionsGroup !== undefined ? { allowConnectionsGroup: !!allowConnectionsGroup } : {}),
           ...(financeEnabled !== undefined ? { financeEnabled: !!financeEnabled } : {}),
+          ...(allowAdminTakeUpTasks !== undefined ? { allowAdminTakeUpTasks: !!allowAdminTakeUpTasks } : {}),
         },
       });
 

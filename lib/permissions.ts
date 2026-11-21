@@ -44,6 +44,8 @@ export interface PlanPermissions {
   canCompleteTask: boolean;
   canSubmitTaskWork: (isAssignedToMe: boolean) => boolean;
   canApproveTaskSubmission: (deptId: string) => boolean;
+  /** Admin/Owner always; Co-Admin only when the plan lets co-admins take up tasks themselves */
+  canSelfAssignTask: boolean;
 
   // document permissions
   canAddReport: boolean;
@@ -198,6 +200,10 @@ export function getPermissions(meta: CurrentPlanMeta | null): PlanPermissions {
 
     // any assignee can submit their own work for review, regardless of role
     canSubmitTaskWork: (isAssignedToMe) => isAssignedToMe === true,
+
+    // Admin/Owner can always self-assign; a Co-Admin only when the plan allows co-admins to take up tasks
+    canSelfAssignTask:
+      isOwnerOrAdmin || (isCoAdmin && meta?.allowAdminTakeUpTasks === true),
 
     // Admin/Co-Admin/Manager always; Co-Manager only if explicitly granted
     canApproveTaskSubmission: (deptId) =>

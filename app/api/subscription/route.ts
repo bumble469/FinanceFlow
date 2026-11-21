@@ -54,9 +54,12 @@ export async function POST(req: NextRequest) {
     else if (price.billingInterval === "HALF_YEARLY") periodEnd.setMonth(periodEnd.getMonth() + 6);
     else periodEnd.setFullYear(periodEnd.getFullYear() + 1);
 
+    // a user who already has an ACTIVE subscription keeps access when switching plans
+    const existing = await prisma.subscription.findUnique({ where: { accountId: account.id } });
+
     const isFree = price.plan.code === "STARTER";
     const activateNow = isFree || PAYMENTS_TEST_MODE;
-    const status = activateNow ? "ACTIVE" : "PENDING";
+    const status = activateNow || existing?.status === "ACTIVE" ? "ACTIVE" : "PENDING";
 
     const subscription = await prisma.subscription.upsert({
       where: { accountId: account.id },
