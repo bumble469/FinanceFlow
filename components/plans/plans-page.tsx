@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import axios from "axios";
 import { authClient } from "@/lib/auth-client";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Loader } from "@/components/shared/loader";
+import { useSnackbar } from "@/lib/useSnackbar";
 
 function mapWorkItemToPlan(workItem: any): Plan {
   return {
@@ -71,6 +72,8 @@ export function PlansPage() {
   const [tab, setTab] = useState("my-plans");
 
   const [subscription, setSubscription] = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const { show } = useSnackbar();
 
   useEffect(() => {
     fetchPlans();
@@ -86,9 +89,11 @@ export function PlansPage() {
     }
   }, []);
 
-  const fetchPlans = async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchPlans = async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const { data } = await authClient.request("/api/plan", {
@@ -102,15 +107,30 @@ export function PlansPage() {
 
       setInvitations(data.data.invitations);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(
-          err.response?.data?.error || "Failed to fetch plans"
-        );
-      } else {
-        setError("Something went wrong");
-      }
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.error || "Failed to fetch plans"
+        : "Something went wrong";
+      // a manual reload shouldn't replace the whole page with an error
+      if (silent === true) show(message, "error");
+      else setError(message);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
+    }
+  };
+
+  // reload plans, collaborations and invitations without the full-page loader
+  const handleReload = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchPlans(true),
+        authClient
+          .request("/api/subscription")
+          .then((res) => setSubscription(res.data.data ?? null))
+          .catch((err) => console.error("Failed to fetch subscription:", err)),
+      ]);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -194,6 +214,17 @@ export function PlansPage() {
           </p>
         </div>
 
+        <div className="flex shrink-0 items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={handleReload}
+          disabled={refreshing}
+          className="gap-2 cursor-pointer"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          <span className="hidden sm:inline">{refreshing ? "Reloading..." : "Reload"}</span>
+        </Button>
+
         <Tooltip>
           <TooltipTrigger asChild>
             <span>
@@ -215,6 +246,7 @@ export function PlansPage() {
             </TooltipContent>
           )}
         </Tooltip>
+        </div>
       </div>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

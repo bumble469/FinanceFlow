@@ -25,6 +25,8 @@ type Props = {
   onUpdate?: (id: string, name: string, budget: number) => Promise<void> | void;
   onDeptCreated: () => void;
   maxBudget: number;
+  /** When false, the budget field is hidden and not required */
+  financeEnabled?: boolean;
   editingDept?: Dept | null;
   open?: boolean;
   setOpen?: (v: boolean) => void;
@@ -35,6 +37,7 @@ export function AddDeptDialog({
   onUpdate,
   onDeptCreated,
   maxBudget,
+  financeEnabled = true,
   editingDept,
   open: controlledOpen,
   setOpen: setControlledOpen,
@@ -69,9 +72,11 @@ export function AddDeptDialog({
 
   const isInvalid =
     !name ||
-    !budget ||
-    numericBudget <= 0 ||
-    (maxBudget >= 0 && numericBudget > maxBudget);
+    (financeEnabled && (
+      !budget ||
+      numericBudget <= 0 ||
+      (maxBudget >= 0 && numericBudget > maxBudget)
+    ));
 
   const handleSubmit = async () => {
     if (isInvalid || locked) return;
@@ -148,28 +153,30 @@ export function AddDeptDialog({
             />
           </div>
 
-          {/* BUDGET */}
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">
-              Budget
-            </Label>
-            <Input
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="Enter amount"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
-              }}
-              disabled={locked}
-            />
+          {/* BUDGET — hidden when finance is disabled */}
+          {financeEnabled && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                Budget
+              </Label>
+              <Input
+                type="number"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                placeholder="Enter amount"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSubmit();
+                }}
+                disabled={locked}
+              />
 
-            {budget && maxBudget >= 0 && numericBudget > maxBudget && (
-              <p className="text-sm text-red-500">
-                Budget cannot exceed remaining ({maxBudget})
-              </p>
-            )}
-          </div>
+              {budget && maxBudget >= 0 && numericBudget > maxBudget && (
+                <p className="text-sm text-red-500">
+                  Budget cannot exceed remaining ({maxBudget})
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <Button

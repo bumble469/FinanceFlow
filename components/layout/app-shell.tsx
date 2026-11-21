@@ -64,7 +64,8 @@ export function AppShell({ children, noScroll }: { children: React.ReactNode; no
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-7xl",
+              "mx-auto w-full",
+              "max-w-[calc(100vw-100px)]",
               isConnections
                 ? "h-full p-3 md:p-6 pb-20 md:pb-6 overflow-hidden"
                 : "min-h-full px-6 py-8 pb-24 md:pb-8 lg:px-8"

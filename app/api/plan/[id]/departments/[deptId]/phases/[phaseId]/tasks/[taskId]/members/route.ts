@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
+import { guardCoAdminTarget } from "@/lib/co-admin-task-guard";
 
 async function resolveTask(
   workItemId: string,
@@ -85,7 +86,12 @@ export async function GET(
       where: {
         workItemId: id,
         id: { notIn: assignedWorkItemMemberIds },
-        role: { in: ["MANAGER", "CO_MANAGER", "MEMBER"] },
+        role: {
+          in:
+            membership.role === "ADMIN"
+              ? ["CO_ADMIN", "MANAGER", "CO_MANAGER", "MEMBER"]
+              : ["MANAGER", "CO_MANAGER", "MEMBER"],
+        },
         departmentMembers: { some: { departmentId: deptId } },
       },
       select: {
@@ -159,6 +165,15 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    const blocked = await guardCoAdminTarget({
+      planId: id,
+      deptId,
+      actor: membership,
+      targetMemberId: workItemMemberId,
+      action: "assign",
+    });
+    if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
     const taskMember = await prisma.taskMember.create({
       data: {
@@ -262,6 +277,15 @@ export async function DELETE(
         { status: 400 }
       );
     }
+
+    const blocked = await guardCoAdminTarget({
+      planId: id,
+      deptId,
+      actor: membership,
+      targetMemberId: workItemMemberId,
+      action: "remove",
+    });
+    if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
     await prisma.taskMember.deleteMany({
       where: {

@@ -613,6 +613,7 @@ export function PlanningSection({ permissions }: { permissions: PlanPermissions 
                       onUpdate={(id, name, budget) => updateDepartmentHandler(id, { name, budget })}
                       onDeptCreated={fetchDepartments}
                       maxBudget={remainingBudget}
+                      financeEnabled={currentPlanMeta?.financeEnabled !== false}
                       editingDept={editingDept}
                       open={deptDialogOpen}
                       setOpen={(v) => { setDeptDialogOpen(v); if (!v) setEditingDept(null); }}

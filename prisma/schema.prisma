@@ -483,6 +483,7 @@ model WorkItem {
   allowMultipleEditing Boolean @default(true)
   allowConnectionsGroup Boolean @default(true)
   financeEnabled Boolean @default(true)
+  allowAdminTakeUpTasks Boolean @default(false)
 
   members WorkItemMember[]
   invitations WorkItemMemberInvitation[]
