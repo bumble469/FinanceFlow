@@ -28,6 +28,12 @@ export function EventDepartmentDetailView({
   const { currentPlanId, currentPlanMeta } = useFinancialStore();
   const perms = getPermissions(currentPlanMeta);
 
+  // Owner/admin always; co-admin only when the plan allows it AND they're in this department
+  const canSelfAssign =
+    perms.canSelfAssignTask &&
+    (currentPlanMeta?.role !== "CO_ADMIN" ||
+      !!currentPlanMeta?.departmentIds?.includes(dept.id));
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskDialog, setTaskDialog] = useState<{ open: boolean; editing?: Task | null }>({ open: false });
@@ -137,6 +143,8 @@ export function EventDepartmentDetailView({
           onSubmissionReviewed={fetchTasks}
           canEdit={perms.canEditTask(dept.id)}
           canDelete={perms.canDeleteTask}
+          canSelfAssign={canSelfAssign}
+          onTakeUpChanged={fetchTasks}
         />
       )}
 

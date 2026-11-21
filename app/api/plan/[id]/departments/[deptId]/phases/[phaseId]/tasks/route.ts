@@ -124,6 +124,10 @@ export async function POST(
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    if (!dueDate || isNaN(new Date(dueDate).getTime())) {
+      return NextResponse.json({ error: "Due date and time is required" }, { status: 400 });
+    }
+
     if (Array.isArray(memberIds) && memberIds.length > 0) {
       const validMembers = await prisma.workItemMember.count({
         where: { id: { in: memberIds }, workItemId },

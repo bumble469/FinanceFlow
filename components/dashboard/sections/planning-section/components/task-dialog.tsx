@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Task } from "@/lib/types";
 import { useEditLock } from "@/hooks/use-edit-lock";
 import { EditingPresenceIndicator } from "@/components/shared/editing-presence-indicator";
+import { toLocalInput, fromLocalInput } from "@/lib/due-date";
 
 export interface TaskRequirementInput {
   requireApproval: boolean;
@@ -58,7 +59,7 @@ export function TaskDialog({
     if (open) {
       const t = editingTask?.title ?? "";
       const d = editingTask?.description ?? "";
-      const due = editingTask?.dueDate ? editingTask.dueDate.split("T")[0] : "";
+      const due = toLocalInput(editingTask?.dueDate);
       setTitle(t);
       setDescription(d);
       setDueDate(due);
@@ -71,7 +72,7 @@ export function TaskDialog({
   if (!open) return null;
 
   const handleSave = () => {
-    if (!title.trim() || locked) return;
+    if (!title.trim() || !dueDate || locked) return;
 
     if (editingTask) {
       // Only include fields the user actually changed, so a concurrent edit
@@ -82,18 +83,18 @@ export function TaskDialog({
       };
       const trimmedTitle = title.trim();
       const trimmedDesc = description.trim() || undefined;
-      const nextDue = dueDate || undefined;
+      const nextDue = fromLocalInput(dueDate);
 
       if (trimmedTitle !== originalRef.current.title) payload.title = trimmedTitle;
       if (trimmedDesc !== (originalRef.current.description || undefined)) payload.description = trimmedDesc;
-      if (nextDue !== (originalRef.current.dueDate || undefined)) payload.dueDate = nextDue;
+      if (dueDate !== originalRef.current.dueDate) payload.dueDate = nextDue;
 
       onSave(payload as { title: string; description?: string; dueDate?: string; requirement: TaskRequirementInput });
     } else {
       onSave({
         title: title.trim(),
         description: description.trim() || undefined,
-        dueDate: dueDate || undefined,
+        dueDate: fromLocalInput(dueDate),
         requirement,
       });
     }
@@ -148,10 +149,11 @@ export function TaskDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="task-due">Due date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <Label htmlFor="task-due">Due date &amp; time <span className="text-destructive">*</span></Label>
           <Input
             id="task-due"
-            type="date"
+            type="datetime-local"
+            required
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={locked}
@@ -252,7 +254,7 @@ export function TaskDialog({
 
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" className="cursor-pointer" onClick={onClose}>Cancel</Button>
-          <Button size="sm" disabled={!title.trim() || locked} onClick={handleSave} className="cursor-pointer">
+          <Button size="sm" disabled={!title.trim() || !dueDate || locked} onClick={handleSave} className="cursor-pointer">
             {editingTask ? "Save changes" : "Add task"}
           </Button>
         </div>

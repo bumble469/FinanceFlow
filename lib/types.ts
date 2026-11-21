@@ -330,6 +330,12 @@ export type Task = {
   dependsOnIds?: string[];
   milestones?: TaskMilestoneRef[];
   requirement?: TaskRequirement | null;
+  members?: {
+    workItemMember: {
+      id: string;
+      user: { id: string; name: string | null; image?: string | null };
+    };
+  }[];
   createdAt?: string;
   updatedAt?: string;
 };
