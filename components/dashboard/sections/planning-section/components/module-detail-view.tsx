@@ -8,6 +8,7 @@ import { TaskDialog } from "./task-dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { authClient } from "@/lib/auth-client";
 import { useFinancialStore } from "@/lib/store";
+import { getPermissions } from "@/lib/permissions";
 
 export function ModuleDetailView({
   module,
@@ -24,7 +25,14 @@ export function ModuleDetailView({
   canDeleteTask?: boolean;
   canApproveTaskSubmissions?: boolean;
 }) {
-  const { currentPlanId } = useFinancialStore();
+  const { currentPlanId, currentPlanMeta } = useFinancialStore();
+  const perms = getPermissions(currentPlanMeta);
+
+  // Owner/admin always; co-admin only when the plan allows it AND they're in this department
+  const canSelfAssign =
+    perms.canSelfAssignTask &&
+    (currentPlanMeta?.role !== "CO_ADMIN" ||
+      !!currentPlanMeta?.departmentIds?.includes(module.departmentId ?? ""));
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +182,8 @@ export function ModuleDetailView({
           canDelete={canDeleteTask}
           canApproveSubmissions={canApproveTaskSubmissions}
           onSubmissionReviewed={fetchTasks}
+          canSelfAssign={canSelfAssign}
+          onTakeUpChanged={fetchTasks}
         />
       )}
 

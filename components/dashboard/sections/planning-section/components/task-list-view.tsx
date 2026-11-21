@@ -12,11 +12,16 @@ import {
   Ban,
   AlertTriangle,
   Send,
+  UserPlus,
+  UserMinus,
 } from "lucide-react";
 import { TaskMembersDialog } from "./task-member-dialog";
 import { cn } from "@/lib/utils";
 import { ReviewSubmissionDialog } from "@/components/shared/review-submission-dialog";
 import { authClient } from "@/lib/auth-client";
+import { useFinancialStore } from "@/lib/store";
+import { useSnackbar } from "@/lib/useSnackbar";
+import { formatDue } from "@/lib/due-date";
 
 // Quick-toggle only cycles between states that never require approval.
 // COMPLETED can only be reached via the submission/review workflow.
@@ -79,6 +84,8 @@ type TaskListViewProps = {
   onSubmissionReviewed?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  canSelfAssign?: boolean;
+  onTakeUpChanged?: () => void;
 };
 
 export function TaskListView({
@@ -93,8 +100,28 @@ export function TaskListView({
   onSubmissionReviewed,
   canEdit,
   canDelete,
+  canSelfAssign,
+  onTakeUpChanged,
 }: TaskListViewProps) {
+  const { show } = useSnackbar();
+  const currentUserId = useFinancialStore((s) => s.currentUser?.id);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const toggleTakeUp = async (taskId: string, isMine: boolean) => {
+    setBusyTaskId(taskId);
+    try {
+      await authClient.request(
+        `/api/plan/${workItemId}/departments/${deptId}/tasks/${taskId}/take-up`,
+        { method: isMine ? "DELETE" : "POST" }
+      );
+      onTakeUpChanged?.();
+    } catch (err: any) {
+      show(err?.response?.data?.error || "Couldn't update task", "error");
+    } finally {
+      setBusyTaskId(null);
+    }
+  };
   const [pendingSubmissions, setPendingSubmissions] = useState<Record<string, any>>({});
 
   const fetchPendingSubmission = async (taskId: string) => {
@@ -127,6 +154,8 @@ export function TaskListView({
         {tasks.map((t) => {
           const canQuickToggle = STATUS_CYCLE.includes(t.status);
           const pendingSubmission = pendingSubmissions[t.id];
+          const isMine = !!t.members?.some((m) => m.workItemMember.user.id === currentUserId);
+          const isClosed = t.status === "COMPLETED" || t.status === "DONE";
 
           return (
             <div
@@ -173,6 +202,24 @@ export function TaskListView({
                   {STATUS_LABEL[t.status]}
                 </span>
 
+                {canSelfAssign && !isClosed && (
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-7 gap-1 px-2 text-xs cursor-pointer"
+                      disabled={busyTaskId === t.id}
+                      onClick={() => toggleTakeUp(t.id, isMine)}
+                    >
+                      {isMine ? (
+                        <><UserMinus className="h-3 w-3" /> Leave task</>
+                      ) : (
+                        <><UserPlus className="h-3 w-3" /> Take up task</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
                 {t.milestones && t.milestones.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     {t.milestones.map((m) => {
@@ -202,7 +249,7 @@ export function TaskListView({
 
                 {t.dueDate && (
                   <span className="ml-2 text-xs text-muted-foreground">
-                    Due {new Date(t.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    Due {formatDue(t.dueDate)}
                   </span>
                 )}
 

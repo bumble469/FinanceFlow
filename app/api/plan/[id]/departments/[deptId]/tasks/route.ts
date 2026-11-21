@@ -120,6 +120,10 @@ export async function POST(
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    if (!dueDate || isNaN(new Date(dueDate).getTime())) {
+      return NextResponse.json({ error: "Due date and time is required" }, { status: 400 });
+    }
+
     if (phaseId) {
       const phase = await prisma.phase.findFirst({
         where: { id: phaseId, workItemId },

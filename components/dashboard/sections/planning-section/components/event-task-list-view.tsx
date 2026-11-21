@@ -1,11 +1,14 @@
 import { Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Pencil, Trash2, Circle, Loader2, CheckSquare, Users, Flag, Ban, AlertTriangle, Send } from "lucide-react";
+import { Pencil, Trash2, Circle, Loader2, CheckSquare, Users, Flag, Ban, AlertTriangle, Send, UserPlus, UserMinus } from "lucide-react";
 import { EventTaskMembersDialog } from "./event-task-member-dialog";
 import { cn } from "@/lib/utils";
 import { ReviewSubmissionDialog } from "@/components/shared/review-submission-dialog";
 import { authClient } from "@/lib/auth-client";
+import { useFinancialStore } from "@/lib/store";
+import { useSnackbar } from "@/lib/useSnackbar";
+import { formatDue } from "@/lib/due-date";
 
 const STATUS_CYCLE: Task["status"][] = ["TODO", "IN_PROGRESS"];
 
@@ -50,12 +53,32 @@ type EventTaskListViewProps = {
   onSubmissionReviewed?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  canSelfAssign?: boolean;
+  onTakeUpChanged?: () => void;
 };
 
 export function EventTaskListView({
-  tasks, workItemId, deptId, onStatusChange, onEdit, onDelete, canApproveSubmissions, onSubmissionReviewed, canEdit, canDelete,
+  tasks, workItemId, deptId, onStatusChange, onEdit, onDelete, canApproveSubmissions, onSubmissionReviewed, canEdit, canDelete, canSelfAssign, onTakeUpChanged,
 }: EventTaskListViewProps) {
+  const { show } = useSnackbar();
+  const currentUserId = useFinancialStore((s) => s.currentUser?.id);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const toggleTakeUp = async (taskId: string, isMine: boolean) => {
+    setBusyTaskId(taskId);
+    try {
+      await authClient.request(
+        `/api/plan/${workItemId}/departments/${deptId}/tasks/${taskId}/take-up`,
+        { method: isMine ? "DELETE" : "POST" }
+      );
+      onTakeUpChanged?.();
+    } catch (err: any) {
+      show(err?.response?.data?.error || "Couldn't update task", "error");
+    } finally {
+      setBusyTaskId(null);
+    }
+  };
   const [pendingSubmissions, setPendingSubmissions] = useState<Record<string, any>>({});
 
   const fetchPendingSubmission = async (taskId: string) => {
@@ -84,6 +107,8 @@ export function EventTaskListView({
         {tasks.map((t) => {
           const canQuickToggle = STATUS_CYCLE.includes(t.status);
           const pendingSubmission = pendingSubmissions[t.id];
+          const isMine = !!t.members?.some((m) => m.workItemMember.user.id === currentUserId);
+          const isClosed = t.status === "COMPLETED" || t.status === "DONE";
 
           return (
             <div key={t.id} className="group flex items-start gap-3 rounded-xl border bg-card px-4 py-3 hover:shadow-sm transition">
@@ -104,6 +129,24 @@ export function EventTaskListView({
                 <span className={cn("inline-block mt-1.5 rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE[t.status])}>
                   {STATUS_LABEL[t.status]}
                 </span>
+
+                {canSelfAssign && !isClosed && (
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-7 gap-1 px-2 text-xs cursor-pointer"
+                      disabled={busyTaskId === t.id}
+                      onClick={() => toggleTakeUp(t.id, isMine)}
+                    >
+                      {isMine ? (
+                        <><UserMinus className="h-3 w-3" /> Leave task</>
+                      ) : (
+                        <><UserPlus className="h-3 w-3" /> Take up task</>
+                      )}
+                    </Button>
+                  </div>
+                )}
 
                 {t.milestones && t.milestones.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -134,7 +177,7 @@ export function EventTaskListView({
 
                 {t.dueDate && (
                   <span className="ml-2 text-xs text-muted-foreground">
-                    Due {new Date(t.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    Due {formatDue(t.dueDate)}
                   </span>
                 )}
 
